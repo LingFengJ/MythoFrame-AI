@@ -232,6 +232,7 @@ command and use `--mode api_command`. This is intentionally not the default.
 
 See:
 
+- `HANDOFF.md`
 - `docs/architecture.md`
 - `docs/generation_modes.md`
 - `docs/codex_handoff.md`

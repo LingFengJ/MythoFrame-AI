@@ -7,6 +7,7 @@ from pathlib import Path
 
 from mythoframe.artifacts import apply_stage_output
 from mythoframe.assets import ASSET_TYPES, asset_path
+from mythoframe.bundle import pack_project, unpack_project
 from mythoframe.manual_queue import (
     collect_response,
     create_request,
@@ -14,11 +15,14 @@ from mythoframe.manual_queue import (
     list_pending,
     wait_for_response,
 )
+from mythoframe.output_tools import inspect_stage_output, repair_stage_output
 from mythoframe.prompts import get_stage_spec, list_stage_specs, render_stage_prompt
 from mythoframe.project import ProjectSpec, init_project, project_dir, validate_project
 from mythoframe.pilot import init_pilot_project
 from mythoframe.providers import ApiCommandProvider
+from mythoframe.renderer import render_rough_cut
 from mythoframe.schemas import GENERATION_MODES, STAGE_NAMES
+from mythoframe.subtitles import export_subtitles
 from mythoframe.timeline import export_edit_manifest, write_draft_edit_plan
 from mythoframe.workflow import (
     latest_collected_outputs,
@@ -52,6 +56,15 @@ def main(argv: list[str] | None = None) -> int:
     pilot_parser = subparsers.add_parser("pilot", help="Create an offline original pilot project.")
     pilot_parser.add_argument("slug", nargs="?", default="pilot-scene")
     pilot_parser.add_argument("--force", action="store_true", help="Overwrite seeded pilot files.")
+
+    pack_parser = subparsers.add_parser("pack", help="Pack a project, including ignored local work.")
+    pack_parser.add_argument("slug", help="Project slug.")
+    pack_parser.add_argument("--out", help="Bundle path. Defaults to bundles/<slug>_<timestamp>.mythoframe.zip.")
+
+    unpack_parser = subparsers.add_parser("unpack", help="Unpack a MythoFrame project bundle.")
+    unpack_parser.add_argument("bundle", help="Path to .mythoframe.zip bundle.")
+    unpack_parser.add_argument("--slug", help="Optional new project slug.")
+    unpack_parser.add_argument("--force", action="store_true", help="Replace an existing project.")
 
     request_parser = subparsers.add_parser(
         "request",
@@ -124,6 +137,16 @@ def main(argv: list[str] | None = None) -> int:
         help="Keep applied files even if project validation fails.",
     )
 
+    inspect_output_parser = subparsers.add_parser("inspect-output", help="Inspect collected model output.")
+    inspect_output_parser.add_argument("slug", help="Project slug.")
+    inspect_output_parser.add_argument("stage", choices=STAGE_NAMES, help="Workflow stage.")
+    inspect_output_parser.add_argument("--output-file", help="Specific collected output file. Defaults to latest.")
+
+    repair_output_parser = subparsers.add_parser("repair-output", help="Mechanically normalize collected output.")
+    repair_output_parser.add_argument("slug", help="Project slug.")
+    repair_output_parser.add_argument("stage", choices=STAGE_NAMES, help="Workflow stage.")
+    repair_output_parser.add_argument("--output-file", help="Specific collected output file. Defaults to latest.")
+
     validate_parser = subparsers.add_parser("validate", help="Validate project structure.")
     validate_parser.add_argument("slug", help="Project slug.")
 
@@ -139,6 +162,29 @@ def main(argv: list[str] | None = None) -> int:
     export_parser = subparsers.add_parser("export-manifest", help="Export a text edit manifest.")
     export_parser.add_argument("slug", help="Project slug.")
     export_parser.add_argument("--out", help="Output path. Defaults to assets/exports/edit_manifest.txt.")
+
+    subtitles_parser = subparsers.add_parser("subtitles", help="Export subtitles from edit or voice data.")
+    subtitles_parser.add_argument("slug", help="Project slug.")
+    subtitles_parser.add_argument("--format", choices=("srt", "vtt"), default="srt")
+    subtitles_parser.add_argument("--out", help="Output path. Defaults to assets/exports/subtitles.<format>.")
+
+    render_parser = subparsers.add_parser(
+        "render-rough-cut",
+        help="Render a local rough cut with ffmpeg when media files exist.",
+    )
+    render_parser.add_argument("slug", help="Project slug.")
+    render_parser.add_argument("--out", help="Output video path. Defaults to assets/exports/rough_cut.mp4.")
+
+    next_parser = subparsers.add_parser("next", help="Create a request for the next incomplete stage.")
+    next_parser.add_argument("slug", help="Project slug.")
+    next_parser.add_argument(
+        "--mode",
+        choices=GENERATION_MODES,
+        default="manual_file",
+        help="Generation mode. Defaults to manual_file.",
+    )
+    next_parser.add_argument("--source-file", help="Optional source brief path.")
+    _add_request_metadata_args(next_parser)
 
     asset_parser = subparsers.add_parser("asset-name", help="Print a conventional asset path.")
     asset_parser.add_argument("slug", help="Project slug.")
@@ -158,6 +204,10 @@ def main(argv: list[str] | None = None) -> int:
         return _init(root, args)
     if args.command == "pilot":
         return _pilot(root, args)
+    if args.command == "pack":
+        return _pack(root, args)
+    if args.command == "unpack":
+        return _unpack(root, args)
     if args.command == "request":
         return _request(root, args)
     if args.command == "stages":
@@ -172,6 +222,10 @@ def main(argv: list[str] | None = None) -> int:
         return _collect(root, args)
     if args.command == "apply-output":
         return _apply_output(root, args)
+    if args.command == "inspect-output":
+        return _inspect_output(root, args)
+    if args.command == "repair-output":
+        return _repair_output(root, args)
     if args.command == "validate":
         return _validate(root, args)
     if args.command == "review":
@@ -180,6 +234,12 @@ def main(argv: list[str] | None = None) -> int:
         return _draft_edit(root, args)
     if args.command == "export-manifest":
         return _export_manifest(root, args)
+    if args.command == "subtitles":
+        return _subtitles(root, args)
+    if args.command == "render-rough-cut":
+        return _render_rough_cut(root, args)
+    if args.command == "next":
+        return _next(root, args)
     if args.command == "asset-name":
         return _asset_name(root, args)
 
@@ -212,6 +272,24 @@ def _pilot(root: Path, args: argparse.Namespace) -> int:
     print(f"Pilot project ready: {path}")
     print("Next command:")
     print(f"  mythoframe request-stage {args.slug} adaptation")
+    return 0
+
+
+def _pack(root: Path, args: argparse.Namespace) -> int:
+    output = Path(args.out) if args.out else None
+    if output is not None and not output.is_absolute():
+        output = root / output
+    result = pack_project(root, args.slug, output_path=output)
+    print(f"Packed {result.files} file(s): {result.path}")
+    return 0
+
+
+def _unpack(root: Path, args: argparse.Namespace) -> int:
+    bundle = Path(args.bundle)
+    if not bundle.is_absolute():
+        bundle = root / bundle
+    result = unpack_project(root, bundle, slug=args.slug, force=args.force)
+    print(f"Unpacked {result.files} file(s): {result.path}")
     return 0
 
 
@@ -399,6 +477,31 @@ def _apply_output(root: Path, args: argparse.Namespace) -> int:
     return 0
 
 
+def _inspect_output(root: Path, args: argparse.Namespace) -> int:
+    path = project_dir(root, args.slug)
+    output_file = Path(args.output_file) if args.output_file else None
+    if output_file is not None and not output_file.is_absolute():
+        output_file = root / output_file
+    inspection = inspect_stage_output(path, args.stage, output_path=output_file)
+    print(f"Output: {inspection.output_path}")
+    print(f"Stage: {inspection.stage}")
+    print(f"Parse: {'ok' if inspection.parse_ok else 'failed'}")
+    print(f"Targets: {', '.join(inspection.targets)}")
+    for message in inspection.messages:
+        print(f"- {message}")
+    return 0 if inspection.parse_ok else 1
+
+
+def _repair_output(root: Path, args: argparse.Namespace) -> int:
+    path = project_dir(root, args.slug)
+    output_file = Path(args.output_file) if args.output_file else None
+    if output_file is not None and not output_file.is_absolute():
+        output_file = root / output_file
+    repaired = repair_stage_output(path, args.stage, output_path=output_file)
+    print(f"Wrote repaired output: {repaired}")
+    return 0
+
+
 def _validate(root: Path, args: argparse.Namespace) -> int:
     path = project_dir(root, args.slug)
     problems = validate_project(path)
@@ -473,6 +576,59 @@ def _export_manifest(root: Path, args: argparse.Namespace) -> int:
     output = export_edit_manifest(path, output_path=output_path)
     print(f"Wrote edit manifest: {output}")
     return 0
+
+
+def _subtitles(root: Path, args: argparse.Namespace) -> int:
+    path = project_dir(root, args.slug)
+    output_path = Path(args.out) if args.out else None
+    if output_path is not None and not output_path.is_absolute():
+        output_path = root / output_path
+    output = export_subtitles(path, fmt=args.format, output_path=output_path)
+    print(f"Wrote subtitles: {output}")
+    return 0
+
+
+def _render_rough_cut(root: Path, args: argparse.Namespace) -> int:
+    path = project_dir(root, args.slug)
+    output_path = Path(args.out) if args.out else None
+    if output_path is not None and not output_path.is_absolute():
+        output_path = root / output_path
+    output = render_rough_cut(path, output_path=output_path)
+    print(f"Wrote rough cut: {output}")
+    return 0
+
+
+def _next(root: Path, args: argparse.Namespace) -> int:
+    path = project_dir(root, args.slug)
+    status = next_stage(path)
+    if status is None:
+        print("All current stages look ready for review.")
+        return 0
+    spec = get_stage_spec(status.stage)
+    prompt = render_stage_prompt(
+        root,
+        path,
+        status.stage,
+        source_file=Path(args.source_file) if args.source_file else None,
+    )
+    metadata = _request_metadata(args)
+    metadata["expected_artifacts"] = ", ".join(spec.output_artifacts)
+    metadata["expected_format"] = spec.expected_format
+    metadata["stage_title"] = spec.title
+    metadata["paste_target"] = "matching .response.md below <!-- MODEL_OUTPUT_BELOW -->"
+    metadata["review_required"] = "true"
+    metadata["cost_policy"] = "manual_file/codex_web by default; api_command only when explicitly configured"
+    return _submit_request(
+        path=path,
+        stage=status.stage,
+        prompt=prompt,
+        mode=args.mode,
+        metadata=metadata,
+        acceptance_checklist=list(spec.acceptance_checklist),
+        wait=False,
+        poll_seconds=10.0,
+        timeout_seconds=0.0,
+    )
 
 
 def _asset_name(root: Path, args: argparse.Namespace) -> int:

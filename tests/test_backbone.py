@@ -3,20 +3,26 @@ from __future__ import annotations
 import sys
 import shutil
 import json
+import zipfile
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from unittest import TestCase
+from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 from mythoframe.assets import asset_path
 from mythoframe.artifacts import apply_stage_output
+from mythoframe.bundle import pack_project, unpack_project
 from mythoframe.manual_queue import collect_response, create_request, is_ready
 from mythoframe.cli import main
+from mythoframe.output_tools import inspect_stage_output, repair_stage_output
 from mythoframe.pilot import init_pilot_project
 from mythoframe.prompts import render_stage_prompt
 from mythoframe.project import ProjectSpec, init_project, project_dir, validate_project
+from mythoframe.renderer import render_rough_cut
 from mythoframe.schemas import OUTPUT_MARKER
+from mythoframe.subtitles import export_subtitles
 from mythoframe.workflow import next_stage, stage_statuses
 
 
@@ -336,3 +342,123 @@ class BackboneTests(TestCase):
 
             self.assertTrue(manifest.exists())
             self.assertIn("shot 1", manifest.read_text(encoding="utf-8"))
+
+    def test_pack_unpack_round_trip_includes_ignored_work(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            path = init_pilot_project(root)
+            ignored_output = path / "outputs" / "script" / "raw.md"
+            ignored_output.parent.mkdir(parents=True, exist_ok=True)
+            ignored_output.write_text("raw output", encoding="utf-8")
+
+            bundle = pack_project(root, "pilot-scene").path
+            with zipfile.ZipFile(bundle) as archive:
+                self.assertIn("project/outputs/script/raw.md", archive.namelist())
+
+            new_root = root / "other"
+            result = unpack_project(new_root, bundle)
+
+            self.assertTrue((result.path / "source_brief.md").exists())
+            self.assertEqual((result.path / "outputs" / "script" / "raw.md").read_text(encoding="utf-8"), "raw output")
+
+    def test_output_inspect_and_repair(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            init_project(root, ProjectSpec(slug="pilot", title="Pilot"))
+            path = project_dir(root, "pilot")
+            output_dir = path / "outputs" / "characters"
+            output_dir.mkdir(parents=True, exist_ok=True)
+            output = output_dir / "001.md"
+            output.write_text(
+                (
+                    "Here is the JSON:\n"
+                    "```json\n"
+                    '{"characters":[{"id":"hero","name":"Hero",'
+                    '"reference_prompt":"ref","consistency_prompt":"same"}],'
+                    '"consistency_rules":[]}'
+                    "\n```"
+                ),
+                encoding="utf-8",
+            )
+
+            inspection = inspect_stage_output(path, "characters", output)
+            repaired = repair_stage_output(path, "characters", output)
+
+            self.assertTrue(inspection.parse_ok)
+            self.assertIn("Parsed artifacts", inspection.messages[0])
+            self.assertIn("characters.json", repaired.read_text(encoding="utf-8"))
+
+    def test_subtitle_export_from_voice_lines(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            init_project(root, ProjectSpec(slug="pilot", title="Pilot"))
+            path = project_dir(root, "pilot")
+            (path / "shot_table.csv").write_text(
+                (
+                    "shot_number,duration,camera_movement,framing,visual_description,"
+                    "image_prompt,video_prompt,dialogue,narration,music,sound_effects,"
+                    "review_status\n"
+                    "1,2.5s,pan,wide,scene,img,vid,Hello,,soft,wind,draft\n"
+                ),
+                encoding="utf-8",
+            )
+            (path / "voice_lines.csv").write_text(
+                (
+                    "line_id,shot_number,speaker,text,voice_style,status,audio_asset\n"
+                    "1,1,Courier,Hello there,warm,draft,\n"
+                ),
+                encoding="utf-8",
+            )
+
+            srt = export_subtitles(path, fmt="srt")
+            vtt = export_subtitles(path, fmt="vtt")
+
+            self.assertIn("00:00:00,000 --> 00:00:02,500", srt.read_text(encoding="utf-8"))
+            self.assertTrue(vtt.read_text(encoding="utf-8").startswith("WEBVTT"))
+
+    def test_rough_cut_requires_ffmpeg(self) -> None:
+        with patch("mythoframe.renderer.shutil.which", return_value=None):
+            with self.assertRaisesRegex(RuntimeError, "ffmpeg"):
+                render_rough_cut(Path("unused"))
+
+    def test_rough_cut_reports_missing_assets_before_rendering(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            init_project(root, ProjectSpec(slug="pilot", title="Pilot"))
+            path = project_dir(root, "pilot")
+            (path / "edit_plan.json").write_text(
+                json.dumps({"clips": [{"video_asset": "assets/video_clips/missing.mp4"}]}),
+                encoding="utf-8",
+            )
+
+            with patch("mythoframe.renderer.shutil.which", return_value="ffmpeg"):
+                with self.assertRaisesRegex(FileNotFoundError, "Missing video assets"):
+                    render_rough_cut(path)
+
+    def test_cli_next_creates_request_for_next_stage(self) -> None:
+        with TemporaryDirectory() as tmp:
+            repo_root = Path(__file__).resolve().parents[1]
+            root = Path(tmp)
+            shutil.copytree(repo_root / "prompts", root / "prompts")
+            init_pilot_project(root)
+
+            self.assertEqual(main(["--root", tmp, "next", "pilot-scene"]), 0)
+
+            pending = project_dir(root, "pilot-scene") / "requests" / "pending"
+            request_files = list(pending.glob("*.request.md"))
+            self.assertEqual(len(request_files), 1)
+            self.assertIn("- Stage: adaptation", request_files[0].read_text(encoding="utf-8"))
+
+    def test_cli_pack_unpack_and_subtitles(self) -> None:
+        with TemporaryDirectory() as tmp:
+            self.assertEqual(main(["--root", tmp, "pilot", "pilot-scene"]), 0)
+            self.assertEqual(main(["--root", tmp, "pack", "pilot-scene"]), 0)
+            bundles = list((Path(tmp) / "bundles").glob("*.mythoframe.zip"))
+            self.assertEqual(len(bundles), 1)
+
+            unpack_root = Path(tmp) / "unpacked"
+            self.assertEqual(
+                main(["--root", str(unpack_root), "unpack", str(bundles[0])]),
+                0,
+            )
+            self.assertTrue((unpack_root / "projects" / "pilot-scene").exists())

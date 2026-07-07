@@ -43,6 +43,15 @@ projects/<slug>/
   outputs/
 ```
 
+Local project folders are ignored by Git because they can contain generated
+media, copyrighted source excerpts, and model outputs. Use project bundles when
+that local work must move across machines:
+
+```powershell
+mythoframe pack <slug>
+mythoframe unpack <bundle-path>
+```
+
 ## Why File-Based First
 
 The expensive part of this workflow is model generation. The file queue makes
@@ -70,9 +79,20 @@ Collected model output is not project truth until it is applied:
 
 ```powershell
 mythoframe collect <slug>
+mythoframe inspect-output <slug> <stage>
 mythoframe apply-output <slug> <stage>
 mythoframe validate <slug>
 ```
+
+When model output has the right content but messy surrounding text, write a
+clean repair candidate first:
+
+```powershell
+mythoframe repair-output <slug> <stage>
+```
+
+That repaired file is still reviewable raw output; it only becomes canonical
+project truth after `apply-output`.
 
 ## Prompt Layer
 
@@ -90,3 +110,12 @@ mythoframe request-stage <slug> <stage> --mode manual_file
 mythoframe request-stage <slug> <stage> --mode codex_web
 mythoframe request-stage <slug> <stage> --mode api_command
 ```
+
+The convenience command for routine operation is:
+
+```powershell
+mythoframe next <slug>
+```
+
+It reads workflow status, chooses the first incomplete stage, renders that stage
+prompt, and creates a request without using any paid API by default.

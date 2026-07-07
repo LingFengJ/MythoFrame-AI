@@ -26,6 +26,15 @@ For stage-specific prompts, prefer:
 mythoframe request-stage <slug> <stage>
 ```
 
+For day-to-day production, the shortcut is:
+
+```powershell
+mythoframe next <slug>
+```
+
+It chooses the next incomplete stage and creates a default `manual_file`
+request.
+
 ## `codex_web`
 
 This mode is still file-based, but the request is written for a Codex operator.
@@ -41,6 +50,15 @@ Intended flow:
 
 The local project does not directly control Codex tools. It creates a durable
 handoff queue that Codex can operate against.
+
+Before promoting any web-generated output into project truth, run:
+
+```powershell
+mythoframe inspect-output <slug> <stage>
+mythoframe apply-output <slug> <stage>
+```
+
+Use `repair-output` first if the web model added useful but messy wrapper text.
 
 ## `api_command`
 

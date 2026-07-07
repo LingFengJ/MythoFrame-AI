@@ -189,7 +189,9 @@ never be committed to GitHub.
 
 ## Current Status
 
-This repository now has a manual-first engineering backbone.
+This repository now has a manual-first engineering backbone with project
+bundles, stage prompts, collected-output inspection, subtitle export, rough-cut
+render hooks, and a local edit manifest flow.
 
 ## Quickstart
 
@@ -223,13 +225,25 @@ Create a stage-specific request from project files:
 mythoframe request-stage pilot-scene script
 ```
 
+Or ask the CLI to choose the next incomplete stage:
+
+```powershell
+mythoframe next pilot-scene
+```
+
 Paste the model output into the generated `.response.md` file below the marker,
 then collect it:
 
 ```powershell
 mythoframe collect pilot-scene
+mythoframe inspect-output pilot-scene script
+mythoframe repair-output pilot-scene script
 mythoframe apply-output pilot-scene script
 ```
+
+`inspect-output` checks whether the latest collected output can be parsed for
+that stage. `repair-output` writes a normalized `.repaired.md` file when the
+model returned useful content with extra surrounding text.
 
 For Codex-assisted web generation, use:
 
@@ -254,6 +268,28 @@ Build a local edit decision list and export a text manifest:
 ```powershell
 mythoframe draft-edit pilot-scene
 mythoframe export-manifest pilot-scene
+```
+
+Export subtitles:
+
+```powershell
+mythoframe subtitles pilot-scene --format srt
+mythoframe subtitles pilot-scene --format vtt
+```
+
+Render a rough cut when `ffmpeg` is installed and the edit plan points to real
+local video clips:
+
+```powershell
+mythoframe render-rough-cut pilot-scene
+```
+
+Move a local project between machines, including ignored outputs and generated
+assets:
+
+```powershell
+mythoframe pack pilot-scene
+mythoframe unpack bundles/pilot-scene_YYYYMMDDTHHMMSSZ.mythoframe.zip
 ```
 
 See:

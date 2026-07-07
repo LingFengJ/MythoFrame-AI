@@ -15,10 +15,13 @@ Codex should act as the model-web operator for pending requests:
 6. Use computer-use automation only when browser automation is not suitable.
 7. Paste the model result into the matching `.response.md` below the marker.
 8. Run `mythoframe collect <slug>` or tell the user the response is ready.
-9. Run `mythoframe apply-output <slug> <stage>` when the user wants to promote
-   the collected result into canonical project files.
-10. Run `mythoframe validate <slug>` before treating collected output as project
-    truth when the output is JSON or CSV.
+9. Run `mythoframe inspect-output <slug> <stage>` for structured stages.
+10. Use `mythoframe repair-output <slug> <stage>` when the model returned
+    parseable content wrapped in extra explanation.
+11. Run `mythoframe apply-output <slug> <stage>` when the user wants to promote
+    the collected or repaired result into canonical project files.
+12. Run `mythoframe validate <slug>` before treating collected output as
+    project truth when the output is JSON or CSV.
 
 ## Safety Rules
 
@@ -37,5 +40,18 @@ If browser/computer automation cannot complete a request, leave the response
 file in place. The user can paste the model result manually and then run:
 
 ```powershell
-python -m mythoframe --root . collect <slug>
+mythoframe collect <slug>
+mythoframe inspect-output <slug> <stage>
 ```
+
+## Routine Operation
+
+When the user asks Codex to continue a project, start with:
+
+```powershell
+mythoframe review <slug>
+mythoframe next <slug>
+```
+
+`next` creates the next stage request with the default manual-file path unless a
+different mode is explicitly requested.

@@ -49,15 +49,21 @@ Tracked project backbone:
 - `src/mythoframe/manual_queue.py`: file-based request/response queue.
 - `src/mythoframe/artifacts.py`: applies collected outputs to canonical project
   artifacts with validation rollback.
+- `src/mythoframe/output_tools.py`: inspects and mechanically repairs collected
+  model outputs before application.
 - `src/mythoframe/providers.py`: opt-in command-based API provider hook.
 - `src/mythoframe/prompts.py`: stage template rendering.
 - `src/mythoframe/assets.py`: asset naming conventions.
+- `src/mythoframe/bundle.py`: project pack/unpack helpers for moving ignored
+  local work between machines.
 - `src/mythoframe/pilot.py`: offline original pilot scaffolding.
 - `src/mythoframe/workflow.py`: stage status and review helpers.
 - `src/mythoframe/timeline.py`: local edit-plan and manifest helpers.
+- `src/mythoframe/subtitles.py`: SRT/VTT subtitle export helpers.
+- `src/mythoframe/renderer.py`: optional local `ffmpeg` rough-cut renderer.
 - `src/mythoframe/schemas.py`: shared constants.
-- `docs/architecture.md`: file-first architecture.
-- `docs/workflow.md`: pilot/review/validation workflow.
+- `docs/architecture.md`: file-first architecture and project truth boundary.
+- `docs/workflow.md`: pilot/review/validation/export workflow.
 - `docs/stage_prompts.md`: stage prompt commands and template behavior.
 - `docs/assets.md`: asset naming conventions.
 - `docs/generation_modes.md`: manual, Codex web, and API command modes.
@@ -66,7 +72,8 @@ Tracked project backbone:
 - `prompts/stages/`: editable prompt templates for the production stages.
 - `examples/pilot_brief.md`: pilot brief template.
 - `tests/test_backbone.py`: smoke tests for project init, queue collection, and
-  CLI init/validate.
+  CLI init/validate, bundles, output inspection, subtitles, and rough-cut
+  preflight behavior.
 
 Local-only files seen in the original Windows worktree:
 
@@ -128,12 +135,26 @@ Review status:
 mythoframe review pilot-scene
 ```
 
+Create the next request automatically:
+
+```powershell
+mythoframe next pilot-scene
+```
+
 After a model response is pasted below the marker in the generated response
 file:
 
 ```powershell
 mythoframe collect pilot-scene
+mythoframe inspect-output pilot-scene script
 mythoframe apply-output pilot-scene script
+```
+
+If the collected output is parseable but messy:
+
+```powershell
+mythoframe repair-output pilot-scene script
+mythoframe apply-output pilot-scene script --output-file projects/pilot-scene/outputs/script/<id>.repaired.md
 ```
 
 Create and export local edit planning artifacts:
@@ -141,6 +162,26 @@ Create and export local edit planning artifacts:
 ```powershell
 mythoframe draft-edit pilot-scene
 mythoframe export-manifest pilot-scene
+```
+
+Export subtitles:
+
+```powershell
+mythoframe subtitles pilot-scene --format srt
+mythoframe subtitles pilot-scene --format vtt
+```
+
+Render a rough cut when `ffmpeg` exists and local video assets are present:
+
+```powershell
+mythoframe render-rough-cut pilot-scene
+```
+
+Pack or unpack a local project, including generated ignored work:
+
+```powershell
+mythoframe pack pilot-scene
+mythoframe unpack bundles/pilot-scene_YYYYMMDDTHHMMSSZ.mythoframe.zip
 ```
 
 Create a Codex-assisted web request:
@@ -205,12 +246,13 @@ Good next steps, in order:
    brief. Done.
 3. Add schema validation for CSV/JSON artifacts beyond file existence. Initial
    row-level validation exists; deepen it as schemas become stricter.
-4. Add a rough-cut edit plan schema before implementing any renderer. Initial
-   schema, prompt, local draft builder, and manifest export exist.
-5. Add an `ffmpeg` rough-cut renderer only after asset path conventions are
-   stable.
-6. Add a small local web UI only after the CLI workflow is solid.
-7. Add provider adapters last, keeping them opt-in and disabled by default.
+4. Add a rough-cut edit plan schema before implementing any renderer. Done:
+   initial schema, prompt, local draft builder, manifest export, subtitle
+   export, and optional `ffmpeg` renderer exist.
+5. Add project bundle import/export for generated work ignored by Git. Done.
+6. Add collected-output inspection and mechanical repair helpers. Done.
+7. Add a small local web UI only after the CLI workflow is solid.
+8. Add provider adapters last, keeping them opt-in and disabled by default.
 
 ## Current Risks
 
@@ -218,12 +260,13 @@ Good next steps, in order:
   has been created yet.
 - No book, manga, or user-owned story source has been selected.
 - No provider web workflows have been tested against live model sites.
-- No renderer exists yet.
+- Rough-cut rendering exists, but it has not been exercised with real generated
+  clips in a production project.
 - Asset naming conventions exist, but no real generated assets have been linked
   through a production project yet.
 - `projects/*/requests`, `projects/*/outputs`, and `projects/*/assets` are
-  ignored, so generated work products are local unless separately exported or
-  explicitly tracked.
+  ignored, so generated work products are local unless bundled, separately
+  exported, or explicitly tracked.
 
 ## How A New Agent Should Start
 

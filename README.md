@@ -320,6 +320,12 @@ mythoframe pack pilot-scene
 mythoframe unpack bundles/pilot-scene_YYYYMMDDTHHMMSSZ.mythoframe.zip
 ```
 
+## Starting A New Codex Session
+
+Use the prompt in `HANDOFF.md` under "New Session Prompt". It tells a new agent
+to read the project handoff first, inspect task-specific docs, check git status,
+and preserve untracked local source files unless explicitly asked.
+
 See:
 
 - `COMMANDS.md`

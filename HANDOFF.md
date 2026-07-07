@@ -20,6 +20,26 @@ It is both project status and operating guidance.
   - Cinematic animated short
   - Source book, manga, or story still to be selected
 
+## New Session Prompt
+
+Use this prompt when starting a normal new Codex session on this project:
+
+```text
+Please continue work on MythoFrame-AI. First read HANDOFF.md, then follow any docs it points to that are relevant to the task. Before editing, check git status and do not touch untracked local files unless I ask.
+```
+
+Use this longer prompt when the new session is specifically about operating
+Dreamina, ChatGPT, image/video generation websites, or other web model tools:
+
+```text
+Please continue MythoFrame-AI web generation work. Read HANDOFF.md first, then docs/codex_handoff.md and docs/generation_modes.md. Use codex_web as the main production path: browser automation first, computer-use only if needed, manual paste/download fallback, no API calls unless I explicitly approve.
+```
+
+Maintenance rule: when project direction, provider choices, generation mode, or
+account assumptions change, update this section and the relevant referenced docs
+in the same commit. This keeps the handoff prompt current across machines and
+future Codex sessions.
+
 ## Important Product Decision
 
 Paid API generation must not be the default.

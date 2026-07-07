@@ -38,9 +38,10 @@ calls without explicit user approval.
 Default provider assumption: `seedance-first`.
 
 - Use Seedance 2.0 for video generation and native clip audio wherever possible.
-- Prefer Seedance through a Seedance-capable web platform first: Runway,
-  Higgsfield, or an official ByteDance/BytePlus/Volcengine UI if available.
-  Direct API access is optional later, not the default path.
+- Prefer Seedance through Dreamina/CapCut first. Use Runway as the reliable
+  fallback and seedance2.ai only as a cheap unofficial candidate after payment,
+  export, and quality checks. Direct API access is optional later, not the
+  default path.
 - Use one image provider: ChatGPT Images, Gemini/Nano Banana, or Seedream.
 - Treat ElevenLabs, Suno, Udio, Fish Audio, and similar tools as optional
   specialist fallbacks, not baseline requirements.
@@ -466,9 +467,9 @@ Required or likely required:
   prompt refinement: ChatGPT web or OpenAI is enough to start.
 - One logged-in image generation website for character references and storyboard
   frames: choose ChatGPT Images, Gemini/Nano Banana, or Seedream.
-- Logged-in Seedance 2.0-capable web platform access for video and native
-  audio-video clip generation wherever possible. Runway, Higgsfield, or an
-  official ByteDance/BytePlus/Volcengine UI are acceptable starting points.
+- Logged-in Dreamina/CapCut access for Seedance video and native audio-video
+  clip generation wherever possible. Runway is the reliable paid fallback;
+  seedance2.ai is a cheap unofficial candidate to test, not a trusted default.
 - Local `ffmpeg` for automated rough cuts, unless editing is done manually in an
   external editor.
 - Enough local disk space for generated media and project bundles.

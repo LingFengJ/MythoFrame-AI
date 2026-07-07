@@ -172,8 +172,7 @@ Baseline:
 - ChatGPT web or OpenAI access for script, prompt, and planning work
 - One image generation web account: ChatGPT Images, Gemini/Nano Banana, or
   Seedream
-- Seedance 2.0 access through a Seedance-capable web platform for video and
-  native audio-video clips
+- Dreamina/CapCut access for Seedance 2.0 video and native audio-video clips
 - Local `ffmpeg` for rough-cut rendering
 
 Optional later:
@@ -232,7 +231,7 @@ mythoframe request-stage pilot-scene script
 
 Stage requests use the `seedance-first` provider profile by default: planning
 stages target ChatGPT/OpenAI, image prompts target your chosen image provider,
-and video/sound planning targets Seedance 2.0 through a web platform first.
+and video/sound planning targets Dreamina/CapCut Seedance first.
 
 Or ask the CLI to choose the next incomplete stage:
 
@@ -280,7 +279,7 @@ Import generated assets downloaded from model websites:
 
 ```powershell
 mythoframe import-asset pilot-scene storyboard ./downloads/shot1.png --shot 1 --candidate-id shot_001_a --provider "ImageSite"
-mythoframe import-asset pilot-scene video_clip ./downloads/shot1.mp4 --shot 1 --candidate-id shot_001_clip_a --provider "Seedance 2.0 via web UI"
+mythoframe import-asset pilot-scene video_clip ./downloads/shot1.mp4 --shot 1 --candidate-id shot_001_clip_a --provider "Dreamina Seedance 2.0"
 mythoframe select-asset pilot-scene shot_001_a
 mythoframe select-asset pilot-scene shot_001_clip_a
 mythoframe assets pilot-scene

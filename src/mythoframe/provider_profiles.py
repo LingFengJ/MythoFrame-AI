@@ -42,19 +42,21 @@ SEEDANCE_FIRST_STAGE_PROVIDERS: dict[str, StageProvider] = {
         operator_notes="Generate character references and selected keyframes/storyboards before Seedance video.",
     ),
     "video_prompts": StageProvider(
-        target_site="Seedance-capable web platform",
+        target_site="Dreamina/CapCut first; Runway or seedance2.ai fallback",
         target_model="Seedance 2.0",
         operator_notes=(
-            "Seedance-first video stage. Prefer a web UI such as Runway, Higgsfield, "
-            "or an official ByteDance/BytePlus UI if available; avoid direct API "
-            "unless explicitly chosen. Prefer image-to-video from selected storyboard "
-            "frames and use native audio where useful."
+            "Seedance-first video stage. Test Dreamina/CapCut first because it is "
+            "the closest official consumer web route found so far. Use Runway as "
+            "the reliable paid fallback and seedance2.ai only as a cheap unofficial "
+            "candidate after output/payment checks. Avoid direct API unless explicitly "
+            "chosen. Prefer image-to-video from selected storyboard frames and use "
+            "native audio where useful."
         ),
     ),
     "sound_plan": StageProvider(
-        target_site="Seedance-capable web platform first; optional specialist audio fallback",
+        target_site="Dreamina/CapCut first; optional specialist audio fallback",
         target_model="Seedance 2.0 native audio-video; ElevenLabs/Suno/Udio only if needed",
-        operator_notes="Plan sound for Seedance native clip audio first. Add separate voice/music tools only if Seedance control is insufficient.",
+        operator_notes="Plan sound for Dreamina/Seedance native clip audio first. Add separate voice/music tools only if Seedance control is insufficient.",
     ),
     "edit_plan": StageProvider(
         target_site="Local ffmpeg after Seedance downloads",

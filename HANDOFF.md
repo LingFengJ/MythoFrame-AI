@@ -25,7 +25,24 @@ It is both project status and operating guidance.
 Paid API generation must not be the default.
 
 The user explicitly wants the project to support high-quality web model usage
-without forcing expensive API calls. The preferred generation order is:
+without forcing expensive API calls. The CLI safety default remains
+`manual_file`, but the main production path when Codex is actively helping is
+`codex_web`.
+
+Main production path:
+
+1. MythoFrame creates provider-ready request files from project truth.
+2. Codex reads the pending request and operates the logged-in web provider.
+3. Codex prefers browser automation for normal browser pages.
+4. Codex uses computer-use automation only when browser automation cannot handle
+   the provider UI.
+5. If the website blocks automation, requires human-only account/payment/captcha
+   action, or becomes unreliable, the same request falls back to manual
+   paste/download by the user.
+6. Downloaded/generated media is imported back into MythoFrame, selected or
+   rejected, and then used for local rough-cut/edit planning.
+
+Supported generation modes:
 
 1. `manual_file`: create prompt and response files; user pastes model output.
 2. `codex_web`: Codex operates model websites through browser use when possible,
@@ -34,6 +51,10 @@ without forcing expensive API calls. The preferred generation order is:
 
 Never wire a paid API provider as the default path. Never make background API
 calls without explicit user approval.
+
+Do not interpret "Codex-operated" as "computer use every time." Browser
+automation is preferred first, computer use is a fallback for UIs the browser
+tool cannot control, and manual web prompting is the final fallback.
 
 Default provider assumption: `seedance-first`.
 

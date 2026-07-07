@@ -3,6 +3,24 @@
 Use this document when asking Codex to generate a MythoFrame artifact without
 using paid API calls from the project itself.
 
+## Main Path
+
+The intended path is Codex-orchestrated web generation with manual fallback.
+
+Codex should not treat every provider step as pure manual copy/paste. If the
+user is logged in and the chosen web tool is usable from the current machine,
+Codex should try to operate it. For Dreamina/Seedance video work, that means
+opening the provider, pasting the prepared prompt, uploading references when
+available, starting generation after user-approved paid actions, downloading the
+result, and importing it back into MythoFrame.
+
+Codex should also not jump directly to computer-use automation every time.
+Prefer browser automation for browser pages. Use computer use only when browser
+automation cannot handle the provider UI. If either route is blocked by login,
+captcha, payment confirmation, phone verification, site UI changes, or
+unreliable controls, leave the request/response files ready for manual
+paste/download.
+
 ## Operator Role
 
 Codex should act as the model-web operator for pending requests:

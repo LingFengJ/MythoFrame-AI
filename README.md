@@ -233,6 +233,11 @@ Stage requests use the `seedance-first` provider profile by default: planning
 stages target ChatGPT/OpenAI, image prompts target your chosen image provider,
 and video/sound planning targets Dreamina/CapCut Seedance first.
 
+The safe CLI default is `manual_file`, but the normal production path with Codex
+is `codex_web`: Codex prepares the request, tries browser automation first,
+uses computer-use automation only when the site requires it, and falls back to
+manual paste/download if the provider blocks automation.
+
 Or ask the CLI to choose the next incomplete stage:
 
 ```powershell

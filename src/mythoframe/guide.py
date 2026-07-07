@@ -20,6 +20,14 @@ Repeat `next -> collect -> inspect-output -> apply-output -> validate` through:
 
 adaptation -> script -> characters -> shot_table -> image_prompts -> video_prompts -> sound_plan -> edit_plan
 
+## Codex-Operated Generation Path
+
+The safe CLI default is `manual_file`, but the main production path when Codex is helping is `codex_web`.
+
+mythoframe request-stage {slug} video_prompts --mode codex_web
+
+Codex should try browser automation first, use computer-use automation only when the provider UI requires it, and fall back to manual paste/download if the site blocks automation.
+
 ## Seedance-First Media Loop
 
 Use Seedance for generated video clips and native clip audio whenever possible.

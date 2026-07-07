@@ -211,6 +211,12 @@ Create a default manual generation request:
 mythoframe request pilot-scene script --prompt-file examples/pilot_brief.md
 ```
 
+Create a stage-specific request from project files:
+
+```powershell
+mythoframe request-stage pilot-scene script
+```
+
 Paste the model output into the generated `.response.md` file below the marker,
 then collect it:
 
@@ -234,5 +240,7 @@ See:
 
 - `HANDOFF.md`
 - `docs/architecture.md`
+- `docs/stage_prompts.md`
 - `docs/generation_modes.md`
 - `docs/codex_handoff.md`
+- `docs/assets.md`

@@ -20,13 +20,19 @@ python -m mythoframe --root . collect <slug>
 
 The collected result is written to `projects/<slug>/outputs/<stage>/`.
 
+For stage-specific prompts, prefer:
+
+```powershell
+mythoframe request-stage <slug> <stage>
+```
+
 ## `codex_web`
 
 This mode is still file-based, but the request is written for a Codex operator.
 
 Intended flow:
 
-1. Run `mythoframe request <slug> <stage> --mode codex_web`.
+1. Run `mythoframe request-stage <slug> <stage> --mode codex_web`.
 2. Ask Codex to process the pending request.
 3. Codex uses browser use for model websites when possible.
 4. Codex uses computer use for desktop/web UI fallback when needed.
@@ -54,4 +60,3 @@ my-api-wrapper.exe C:\path\to\prompt.md C:\path\to\output.md
 The wrapper can call OpenAI, Anthropic, Gemini, a local model, or any other
 provider. MythoFrame does not make this mode default because model calls can be
 expensive.
-

@@ -25,6 +25,8 @@ def create_request(
     stage: str,
     prompt: str,
     mode: str = "manual_file",
+    metadata: dict[str, str] | None = None,
+    acceptance_checklist: list[str] | None = None,
 ) -> RequestRecord:
     request_id = _request_id(stage)
     pending = project_path / "requests" / "pending"
@@ -34,7 +36,14 @@ def create_request(
     response_path = pending / f"{request_id}.response.md"
 
     request_path.write_text(
-        _request_text(request_id=request_id, stage=stage, prompt=prompt, mode=mode),
+        _request_text(
+            request_id=request_id,
+            stage=stage,
+            prompt=prompt,
+            mode=mode,
+            metadata=metadata or {},
+            acceptance_checklist=acceptance_checklist or [],
+        ),
         encoding="utf-8",
         newline="\n",
     )
@@ -142,7 +151,14 @@ def _stage_from_request_id(request_id: str) -> str:
     return parts[1]
 
 
-def _request_text(request_id: str, stage: str, prompt: str, mode: str) -> str:
+def _request_text(
+    request_id: str,
+    stage: str,
+    prompt: str,
+    mode: str,
+    metadata: dict[str, str],
+    acceptance_checklist: list[str],
+) -> str:
     mode_note = {
         "manual_file": (
             "Manual mode: paste this prompt into the model web app yourself, then "
@@ -155,11 +171,30 @@ def _request_text(request_id: str, stage: str, prompt: str, mode: str) -> str:
         ),
     }.get(mode, "Generation request.")
 
+    metadata_lines = [
+        f"- Request Id: {request_id}",
+        f"- Stage: {stage}",
+        f"- Mode: {mode}",
+    ]
+    for key, value in metadata.items():
+        if value:
+            label = key.replace("_", " ").title()
+            metadata_lines.append(f"- {label}: {value}")
+
+    checklist = ""
+    if acceptance_checklist:
+        checklist = "\n## Acceptance Checklist\n\n" + "\n".join(
+            f"- [ ] {item}" for item in acceptance_checklist
+        )
+        checklist += "\n"
+
     return (
         f"# MythoFrame Request: {request_id}\n\n"
-        f"- Stage: {stage}\n"
-        f"- Mode: {mode}\n\n"
+        "## Request Metadata\n\n"
+        + "\n".join(metadata_lines)
+        + "\n\n"
         f"{mode_note}\n\n"
+        f"{checklist}\n"
         "## Prompt\n\n"
         f"{prompt.strip()}\n"
     )

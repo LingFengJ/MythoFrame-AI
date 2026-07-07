@@ -9,11 +9,12 @@ Codex should act as the model-web operator for pending requests:
 
 1. Inspect `projects/<slug>/requests/pending/`.
 2. Open the relevant `.request.md`.
-3. Use the user's chosen model web app if available.
-4. Prefer browser automation when the target is a browser page.
-5. Use computer-use automation only when browser automation is not suitable.
-6. Paste the model result into the matching `.response.md` below the marker.
-7. Run `mythoframe collect <slug>` or tell the user the response is ready.
+3. Read the request metadata and acceptance checklist.
+4. Use the user's chosen model web app if available.
+5. Prefer browser automation when the target is a browser page.
+6. Use computer-use automation only when browser automation is not suitable.
+7. Paste the model result into the matching `.response.md` below the marker.
+8. Run `mythoframe collect <slug>` or tell the user the response is ready.
 
 ## Safety Rules
 
@@ -32,4 +33,3 @@ file in place. The user can paste the model result manually and then run:
 ```powershell
 python -m mythoframe --root . collect <slug>
 ```
-

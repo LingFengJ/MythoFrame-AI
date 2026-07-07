@@ -8,7 +8,7 @@ import re
 from dataclasses import dataclass
 from pathlib import Path
 
-from mythoframe.schemas import PROJECT_DIRS, PROJECT_FILES
+from mythoframe.schemas import CSV_REQUIRED_HEADERS, PROJECT_DIRS, PROJECT_FILES
 
 
 @dataclass(frozen=True)
@@ -69,9 +69,16 @@ def validate_project(path: Path) -> list[str]:
         target = path / filename
         if target.exists():
             try:
-                json.loads(target.read_text(encoding="utf-8"))
+                value = json.loads(target.read_text(encoding="utf-8"))
             except json.JSONDecodeError as exc:
                 problems.append(f"Invalid JSON in {target}: {exc}")
+                continue
+            problems.extend(_validate_json_shape(target, value))
+
+    for filename, expected_headers in CSV_REQUIRED_HEADERS.items():
+        target = path / filename
+        if target.exists():
+            problems.extend(_validate_csv_headers(target, expected_headers))
 
     return problems
 
@@ -132,6 +139,8 @@ def _project_templates(spec: ProjectSpec) -> dict[str, str]:
     }
 
     return {
+        "source_brief.md": _source_brief_template(spec),
+        "adaptation.md": _placeholder_doc(spec.title, "Adaptation"),
         "project_bible.json": _json(bible),
         "characters.json": _json(characters),
         "script.md": _script_template(spec),
@@ -226,3 +235,66 @@ def _script_template(spec: ProjectSpec) -> str:
         "To be generated.\n"
     )
 
+
+def _source_brief_template(spec: ProjectSpec) -> str:
+    return (
+        f"# {spec.title} Source Brief\n\n"
+        "## Source\n\n"
+        f"- Source type: {spec.source_type}\n"
+        "- Rights status: to_be_determined\n"
+        "- Source title: to_be_determined\n"
+        "- Source excerpt or scene summary: to_be_determined\n\n"
+        "## Target\n\n"
+        f"- Aspect ratio: {spec.aspect_ratio}\n"
+        f"- Runtime: {spec.runtime}\n"
+        "- Language: to_be_determined\n"
+        "- Audience: to_be_determined\n"
+        "- Visual style: to_be_determined\n"
+        "- Emotional tone: cinematic\n\n"
+        "## Creative Constraints\n\n"
+        "- Must include: to_be_determined\n"
+        "- Must avoid: to_be_determined\n"
+        "- Character consistency notes: to_be_determined\n"
+        "- Sound direction: to_be_determined\n"
+    )
+
+
+def _placeholder_doc(title: str, artifact: str) -> str:
+    return f"# {title} {artifact}\n\nTo be generated and reviewed.\n"
+
+
+def _validate_json_shape(path: Path, value: object) -> list[str]:
+    problems: list[str] = []
+    name = path.name
+    if not isinstance(value, dict):
+        return [f"Expected JSON object in {path}"]
+
+    if name == "project_bible.json":
+        for key in ("project", "creative_direction", "generation_policy"):
+            if key not in value:
+                problems.append(f"Missing key `{key}` in {path}")
+    elif name == "characters.json":
+        characters = value.get("characters")
+        if not isinstance(characters, list):
+            problems.append(f"Expected `characters` list in {path}")
+    elif name == "edit_plan.json":
+        if not isinstance(value.get("timeline"), dict):
+            problems.append(f"Expected `timeline` object in {path}")
+        if not isinstance(value.get("tracks"), dict):
+            problems.append(f"Expected `tracks` object in {path}")
+    return problems
+
+
+def _validate_csv_headers(path: Path, expected_headers: tuple[str, ...]) -> list[str]:
+    with path.open("r", encoding="utf-8", newline="") as file:
+        reader = csv.reader(file)
+        try:
+            headers = next(reader)
+        except StopIteration:
+            return [f"Missing CSV header row in {path}"]
+
+    if tuple(headers) != expected_headers:
+        return [
+            f"Unexpected CSV headers in {path}: expected {list(expected_headers)}, got {headers}"
+        ]
+    return []

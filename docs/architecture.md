@@ -27,6 +27,8 @@ or a step needs human review.
 
 ```text
 projects/<slug>/
+  source_brief.md
+  adaptation.md
   project_bible.json
   characters.json
   script.md
@@ -60,3 +62,19 @@ an automated assembly with `ffmpeg` or an editing application's timeline format.
 The final edit should still have a review gate because shot rhythm, continuity,
 and emotional pacing are not reliably solved by automation alone.
 
+## Prompt Layer
+
+Stage prompts live in `prompts/stages/`. They can be rendered without calling a
+model:
+
+```powershell
+mythoframe prompt <slug> <stage>
+```
+
+They can also be turned into manual, Codex-assisted, or opt-in API requests:
+
+```powershell
+mythoframe request-stage <slug> <stage> --mode manual_file
+mythoframe request-stage <slug> <stage> --mode codex_web
+mythoframe request-stage <slug> <stage> --mode api_command
+```

@@ -7,7 +7,8 @@ It is both project status and operating guidance.
 
 - Date of snapshot: 2026-07-07
 - Repository: `https://github.com/LingFengJ/MythoFrame-AI`
-- Main branch latest known commit: `1a932f7 Add manual-first workflow backbone`
+- Main branch status: run `git log --oneline -5` for the current commit. This
+  handoff is intended to be updated when project architecture changes.
 - Owner Git identity used locally:
   - Name: `LingFengJ`
   - Email: `jinlingfeng2579@gmail.com`
@@ -47,11 +48,16 @@ Tracked project backbone:
 - `src/mythoframe/project.py`: project skeleton creation and validation.
 - `src/mythoframe/manual_queue.py`: file-based request/response queue.
 - `src/mythoframe/providers.py`: opt-in command-based API provider hook.
+- `src/mythoframe/prompts.py`: stage template rendering.
+- `src/mythoframe/assets.py`: asset naming conventions.
 - `src/mythoframe/schemas.py`: shared constants.
 - `docs/architecture.md`: file-first architecture.
+- `docs/stage_prompts.md`: stage prompt commands and template behavior.
+- `docs/assets.md`: asset naming conventions.
 - `docs/generation_modes.md`: manual, Codex web, and API command modes.
 - `docs/codex_handoff.md`: how Codex should operate pending web/manual
   generation requests.
+- `prompts/stages/`: editable prompt templates for the production stages.
 - `examples/pilot_brief.md`: pilot brief template.
 - `tests/test_backbone.py`: smoke tests for project init, queue collection, and
   CLI init/validate.
@@ -90,6 +96,18 @@ Create a manual request:
 
 ```powershell
 mythoframe request pilot-scene script --prompt-file examples/pilot_brief.md
+```
+
+Create a stage-specific request:
+
+```powershell
+mythoframe request-stage pilot-scene script
+```
+
+Render a prompt without creating a request:
+
+```powershell
+mythoframe prompt pilot-scene script
 ```
 
 After a model response is pasted below the marker in the generated response
@@ -156,11 +174,13 @@ It creates durable request files that a Codex agent can operate against.
 Good next steps, in order:
 
 1. Add stage-specific prompt templates for script, character bible, shot table,
-   image prompts, video prompts, sound plan, and edit plan.
+   image prompts, video prompts, sound plan, and edit plan. Done.
 2. Add a command to generate those prompts from a project bible and source
-   brief.
-3. Add schema validation for CSV/JSON artifacts beyond file existence.
-4. Add a rough-cut edit plan schema before implementing any renderer.
+   brief. Done.
+3. Add schema validation for CSV/JSON artifacts beyond file existence. Initial
+   validation exists; deepen it as schemas become stricter.
+4. Add a rough-cut edit plan schema before implementing any renderer. Initial
+   schema and prompt exist; deepen before rendering.
 5. Add an `ffmpeg` rough-cut renderer only after asset path conventions are
    stable.
 6. Add a small local web UI only after the CLI workflow is solid.
@@ -189,4 +209,3 @@ Good next steps, in order:
 6. Run the tests before and after edits when feasible.
 7. Keep commits narrow and do not stage local-only `.docx`, generated assets,
    request queues, response outputs, `.env` files, or unrelated user changes.
-

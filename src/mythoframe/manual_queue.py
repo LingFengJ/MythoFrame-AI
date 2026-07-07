@@ -18,6 +18,8 @@ class RequestRecord:
     request_path: Path
     response_path: Path
     mode: str
+    target_model: str = ""
+    target_site: str = ""
 
 
 def create_request(
@@ -58,6 +60,8 @@ def create_request(
         request_path=request_path,
         response_path=response_path,
         mode=mode,
+        target_model=(metadata or {}).get("target_model", ""),
+        target_site=(metadata or {}).get("target_site", ""),
     )
 
 
@@ -71,13 +75,41 @@ def list_pending(project_path: Path) -> list[RequestRecord]:
         request_id = request_path.name.removesuffix(".request.md")
         response_path = pending / f"{request_id}.response.md"
         stage = _stage_from_request_id(request_id)
+        metadata = _request_metadata_from_file(request_path)
         records.append(
             RequestRecord(
                 request_id=request_id,
                 stage=stage,
                 request_path=request_path,
                 response_path=response_path,
-                mode="unknown",
+                mode=metadata.get("mode", "unknown"),
+                target_model=metadata.get("target_model", ""),
+                target_site=metadata.get("target_site", ""),
+            )
+        )
+    return records
+
+
+def list_completed(project_path: Path) -> list[RequestRecord]:
+    completed = project_path / "requests" / "completed"
+    if not completed.exists():
+        return []
+
+    records: list[RequestRecord] = []
+    for request_path in sorted(completed.glob("*.request.md")):
+        request_id = request_path.name.removesuffix(".request.md")
+        response_path = completed / f"{request_id}.response.md"
+        stage = _stage_from_request_id(request_id)
+        metadata = _request_metadata_from_file(request_path)
+        records.append(
+            RequestRecord(
+                request_id=request_id,
+                stage=stage,
+                request_path=request_path,
+                response_path=response_path,
+                mode=metadata.get("mode", "unknown"),
+                target_model=metadata.get("target_model", ""),
+                target_site=metadata.get("target_site", ""),
             )
         )
     return records
@@ -149,6 +181,21 @@ def _stage_from_request_id(request_id: str) -> str:
     if len(parts) == 1:
         return "misc"
     return parts[1]
+
+
+def _request_metadata_from_file(request_path: Path) -> dict[str, str]:
+    metadata: dict[str, str] = {}
+    try:
+        lines = request_path.read_text(encoding="utf-8").splitlines()
+    except FileNotFoundError:
+        return metadata
+    for line in lines:
+        if not line.startswith("- ") or ":" not in line:
+            continue
+        key, value = line[2:].split(":", 1)
+        normalized = key.strip().lower().replace(" ", "_")
+        metadata[normalized] = value.strip()
+    return metadata
 
 
 def _request_text(

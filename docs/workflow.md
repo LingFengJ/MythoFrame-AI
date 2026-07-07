@@ -68,6 +68,28 @@ output. Review that file, then pass it to `apply-output` when appropriate:
 mythoframe apply-output pilot-scene script --output-file projects/pilot-scene/outputs/script/<id>.repaired.md
 ```
 
+## Import And Select Generated Media
+
+When a web model produces images, clips, voices, music, or SFX, import the
+downloaded files into the project:
+
+```powershell
+mythoframe import-asset pilot-scene storyboard .\downloads\shot1.png --shot 1 --candidate-id shot_001_a --provider "ImageSite"
+mythoframe import-asset pilot-scene video_clip .\downloads\shot1.mp4 --shot 1 --candidate-id shot_001_clip_a --provider "VideoSite"
+```
+
+Then select the winning candidate:
+
+```powershell
+mythoframe select-asset pilot-scene shot_001_a
+mythoframe assets pilot-scene --status selected
+mythoframe missing-media pilot-scene
+```
+
+The manifest is the candidate/provenance history. The CSV and edit-plan fields
+remain the current production truth used by subtitle, manifest, and render
+commands.
+
 ## Validation
 
 `validate` checks:

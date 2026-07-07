@@ -14,8 +14,10 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 from mythoframe.assets import asset_path
 from mythoframe.artifacts import apply_stage_output
 from mythoframe.bundle import pack_project, unpack_project
-from mythoframe.manual_queue import collect_response, create_request, is_ready
+from mythoframe.diagnostics import has_failures, run_doctor
+from mythoframe.manual_queue import collect_response, create_request, is_ready, list_completed
 from mythoframe.cli import main
+from mythoframe.media import import_asset, list_asset_candidates, missing_media, set_asset_status
 from mythoframe.output_tools import inspect_stage_output, repair_stage_output
 from mythoframe.pilot import init_pilot_project
 from mythoframe.prompts import render_stage_prompt
@@ -434,6 +436,157 @@ class BackboneTests(TestCase):
             with patch("mythoframe.renderer.shutil.which", return_value="ffmpeg"):
                 with self.assertRaisesRegex(FileNotFoundError, "Missing video assets"):
                     render_rough_cut(path)
+
+    def test_import_and_select_storyboard_asset_updates_prompt(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            init_project(root, ProjectSpec(slug="pilot", title="Pilot"))
+            path = project_dir(root, "pilot")
+            (path / "shot_table.csv").write_text(
+                (
+                    "shot_number,duration,camera_movement,framing,visual_description,"
+                    "image_prompt,video_prompt,dialogue,narration,music,sound_effects,"
+                    "review_status\n"
+                    "1,3s,pan,wide,scene,img,vid,,,,,draft\n"
+                ),
+                encoding="utf-8",
+            )
+            (path / "image_prompts.csv").write_text(
+                (
+                    "shot_number,candidate_id,prompt,reference_assets,negative_prompt,status,"
+                    "selected_asset\n"
+                    "1,shot_001_a,prompt,assets/references/hero.png,,generated,\n"
+                ),
+                encoding="utf-8",
+            )
+            source = root / "generated.png"
+            source.write_text("fake image", encoding="utf-8")
+
+            imported = import_asset(
+                path,
+                source,
+                "storyboard",
+                candidate_id="shot_001_a",
+                shot=1,
+                provider="TestSite",
+                request_id="req-1",
+            )
+            selected = set_asset_status(path, "shot_001_a", status="selected")
+
+            self.assertTrue(imported.destination.exists())
+            self.assertIn(path / "image_prompts.csv", selected.updated_files)
+            rows = (path / "image_prompts.csv").read_text(encoding="utf-8")
+            self.assertIn("assets/storyboards/shot_001_img_v001.png", rows)
+            candidates = list_asset_candidates(path)
+            self.assertEqual(candidates[0]["provider"], "TestSite")
+            self.assertEqual(candidates[0]["status"], "selected")
+            self.assertEqual(missing_media(path), [])
+            self.assertEqual(validate_project(path), [])
+
+    def test_select_video_asset_updates_prompt_and_edit_plan(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            init_project(root, ProjectSpec(slug="pilot", title="Pilot"))
+            path = project_dir(root, "pilot")
+            (path / "video_prompts.csv").write_text(
+                (
+                    "shot_number,source_image,prompt,duration,status,selected_clip\n"
+                    "1,assets/storyboards/shot_001_img_v001.png,move,3s,generated,\n"
+                ),
+                encoding="utf-8",
+            )
+            (path / "edit_plan.json").write_text(
+                json.dumps(
+                    {
+                        "timeline": {"aspect_ratio": "16:9", "runtime": "3s", "frame_rate": "24fps"},
+                        "clips": [
+                            {
+                                "shot_number": 1,
+                                "video_asset": "assets/video_clips/placeholder.mp4",
+                                "start": "00:00:00.000",
+                                "duration": "3s",
+                            }
+                        ],
+                        "audio": {"dialogue": [], "narration": [], "music": [], "sound_effects": []},
+                        "subtitles": [],
+                        "review_gates": [],
+                    }
+                ),
+                encoding="utf-8",
+            )
+            source = root / "clip.mp4"
+            source.write_text("fake video", encoding="utf-8")
+
+            import_asset(path, source, "video_clip", candidate_id="clip_a", shot=1)
+            selected = set_asset_status(path, "clip_a", status="selected")
+
+            self.assertIn(path / "video_prompts.csv", selected.updated_files)
+            self.assertIn(path / "edit_plan.json", selected.updated_files)
+            self.assertIn(
+                "assets/video_clips/shot_001_clip_v001.mp4",
+                (path / "video_prompts.csv").read_text(encoding="utf-8"),
+            )
+            edit_plan = json.loads((path / "edit_plan.json").read_text(encoding="utf-8"))
+            self.assertEqual(
+                edit_plan["clips"][0]["video_asset"],
+                "assets/video_clips/shot_001_clip_v001.mp4",
+            )
+
+    def test_missing_media_reports_selected_paths(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            init_project(root, ProjectSpec(slug="pilot", title="Pilot"))
+            path = project_dir(root, "pilot")
+            (path / "image_prompts.csv").write_text(
+                (
+                    "shot_number,candidate_id,prompt,reference_assets,negative_prompt,status,"
+                    "selected_asset\n"
+                    "1,shot_001_a,prompt,,,selected,assets/storyboards/missing.png\n"
+                ),
+                encoding="utf-8",
+            )
+
+            missing = missing_media(path)
+
+            self.assertEqual(len(missing), 1)
+            self.assertIn("missing.png", missing[0].path.name)
+            self.assertEqual(main(["--root", tmp, "missing-media", "pilot"]), 1)
+
+    def test_request_dashboard_reads_completed_metadata(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            init_project(root, ProjectSpec(slug="pilot", title="Pilot"))
+            path = project_dir(root, "pilot")
+            record = create_request(
+                path,
+                "script",
+                "Write.",
+                mode="codex_web",
+                metadata={"target_site": "ChatGPT", "target_model": "gpt-4.1-mini"},
+            )
+            record.response_path.write_text(
+                f"Header\n{OUTPUT_MARKER}\nDone.",
+                encoding="utf-8",
+            )
+            collect_response(path, record.request_id)
+
+            completed = list_completed(path)
+
+            self.assertEqual(completed[0].mode, "codex_web")
+            self.assertEqual(completed[0].target_site, "ChatGPT")
+            self.assertEqual(completed[0].target_model, "gpt-4.1-mini")
+            self.assertEqual(main(["--root", tmp, "requests", "pilot", "--completed"]), 0)
+
+    def test_doctor_reports_no_failures_for_valid_project_without_openai_smoke(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            init_project(root, ProjectSpec(slug="pilot", title="Pilot"))
+            path = project_dir(root, "pilot")
+            repo_root = Path(__file__).resolve().parents[1]
+
+            checks = run_doctor(repo_root, path)
+
+            self.assertFalse(has_failures(checks))
 
     def test_cli_next_creates_request_for_next_stage(self) -> None:
         with TemporaryDirectory() as tmp:

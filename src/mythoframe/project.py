@@ -74,7 +74,7 @@ def validate_project(path: Path) -> list[str]:
         if not target.exists():
             problems.append(f"Missing directory: {target}")
 
-    for filename in ("project_bible.json", "characters.json", "edit_plan.json"):
+    for filename in ("project_bible.json", "characters.json", "edit_plan.json", "asset_manifest.json"):
         target = path / filename
         if target.exists():
             try:
@@ -153,6 +153,11 @@ def _project_templates(spec: ProjectSpec) -> dict[str, str]:
         },
     }
 
+    asset_manifest = {
+        "version": 1,
+        "candidates": [],
+    }
+
     return {
         "source_brief.md": _source_brief_template(spec),
         "adaptation.md": _placeholder_doc(spec.title, "Adaptation"),
@@ -219,6 +224,7 @@ def _project_templates(spec: ProjectSpec) -> dict[str, str]:
             ]
         ),
         "edit_plan.json": _json(edit_plan),
+        "asset_manifest.json": _json(asset_manifest),
     }
 
 
@@ -325,6 +331,20 @@ def _validate_json_shape(path: Path, value: object) -> list[str]:
                 for key in ("shot_number", "video_asset", "start", "duration"):
                     if clip.get(key) in (None, ""):
                         problems.append(f"Missing `{key}` for clip {index} in {path}")
+    elif name == "asset_manifest.json":
+        if value.get("version") != 1:
+            problems.append(f"Expected `version` 1 in {path}")
+        candidates = value.get("candidates")
+        if not isinstance(candidates, list):
+            problems.append(f"Expected `candidates` list in {path}")
+        else:
+            for index, candidate in enumerate(candidates, start=1):
+                if not isinstance(candidate, dict):
+                    problems.append(f"Expected asset candidate {index} to be an object in {path}")
+                    continue
+                for key in ("candidate_id", "asset_type", "path", "status", "created_utc"):
+                    if not candidate.get(key):
+                        problems.append(f"Missing `{key}` for asset candidate {index} in {path}")
     return problems
 
 

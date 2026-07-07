@@ -51,6 +51,11 @@ Tracked project backbone:
   artifacts with validation rollback.
 - `src/mythoframe/output_tools.py`: inspects and mechanically repairs collected
   model outputs before application.
+- `src/mythoframe/media.py`: imports generated media, tracks asset candidates,
+  selects/rejects candidates, updates consumption artifacts, and reports missing
+  media.
+- `src/mythoframe/diagnostics.py`: operational readiness checks, including
+  optional tiny OpenAI API smoke testing.
 - `src/mythoframe/providers.py`: opt-in command-based API provider hook.
 - `src/mythoframe/prompts.py`: stage template rendering.
 - `src/mythoframe/assets.py`: asset naming conventions.
@@ -73,7 +78,8 @@ Tracked project backbone:
 - `examples/pilot_brief.md`: pilot brief template.
 - `tests/test_backbone.py`: smoke tests for project init, queue collection, and
   CLI init/validate, bundles, output inspection, subtitles, and rough-cut
-  preflight behavior.
+  preflight behavior, request metadata, asset import/selection, missing media,
+  and diagnostics.
 
 Local-only files seen in the original Windows worktree:
 
@@ -133,6 +139,8 @@ Review status:
 
 ```powershell
 mythoframe review pilot-scene
+mythoframe requests pilot-scene --completed
+mythoframe doctor pilot-scene
 ```
 
 Create the next request automatically:
@@ -182,6 +190,15 @@ Pack or unpack a local project, including generated ignored work:
 ```powershell
 mythoframe pack pilot-scene
 mythoframe unpack bundles/pilot-scene_YYYYMMDDTHHMMSSZ.mythoframe.zip
+```
+
+Import, select, and inspect generated media:
+
+```powershell
+mythoframe import-asset pilot-scene storyboard .\downloads\shot1.png --shot 1 --candidate-id shot_001_a --provider "ImageSite"
+mythoframe select-asset pilot-scene shot_001_a
+mythoframe assets pilot-scene
+mythoframe missing-media pilot-scene
 ```
 
 Create a Codex-assisted web request:
@@ -286,8 +303,20 @@ Current completed backbone:
   or clip files are missing.
 - Project pack/unpack exists for moving ignored generated work between
   machines.
+- Request dashboard exists with pending/completed stage, mode, target site, and
+  target model metadata.
+- `doctor` exists for local readiness checks, with optional tiny OpenAI smoke
+  testing when explicitly requested.
+- Generated media can be imported into conventional asset folders and tracked
+  in `asset_manifest.json`.
+- Asset candidates can be selected or rejected, with selection updating
+  `image_prompts.csv`, `video_prompts.csv`, `voice_lines.csv`,
+  `sound_plan.csv`, matching `edit_plan.json` clips, or character references
+  where possible.
+- Missing referenced media can be reported before render/export.
 - Tests cover the core CLI/project/queue/apply/bundle/subtitle/renderer
-  preflight paths.
+  preflight paths plus request metadata, asset import/selection, missing media,
+  and diagnostics.
 
 ## Roadmap To Account-Ready Use
 
@@ -306,16 +335,8 @@ original idea or source material the user has the rights to use.
 
 - Add source-rights metadata and safety checks so adapted material, excerpts,
   uploads, and publishing rights are not treated casually.
-- Add a `doctor` command that checks Python version, package install, project
-  validity, writable folders, optional `ffmpeg`, and useful environment
-  variables.
-- Add an `import-asset` command to copy or register generated image, video, and
-  audio files into the expected asset folders.
-- Add a `select-asset` command or metadata update flow so chosen image/video
-  candidates become the selected assets referenced by CSV and `edit_plan.json`.
-- Add candidate tracking for generated media: candidate id, provider/site,
-  prompt/request source, output path, selected/rejected status, rejection notes,
-  retry notes, and provenance.
+- Extend asset selection so selecting one candidate can optionally mark sibling
+  candidates for the same shot/line/cue as rejected or needs_review.
 - Add richer review commands for visual continuity, character consistency,
   prompt completeness, audio coverage, and missing selected assets.
 - Add continuity controls around character references, style-lock prompts,
@@ -336,7 +357,6 @@ workflow repeatably from pending request files.
   music, and SFX generation.
 - Add target-site fields and run notes to requests in a way that works for
   browser automation, computer use, or manual paste.
-- Add a `requests` dashboard command that groups pending work by stage and mode.
 - Add explicit upload safety prompts for copyrighted/private source material.
 - Add per-provider playbooks only after the user chooses actual websites.
 - Record what each website returns and where downloaded assets should be saved.
@@ -464,10 +484,10 @@ adding one:
 - No book, manga, or user-owned story source has been selected.
 - Rights/source handling is not yet implemented beyond human caution in docs.
 - No provider web workflows have been tested against live model sites.
-- No asset import/selection command exists yet, so generated media still needs
-  careful manual path placement.
-- No candidate tracking exists yet for generated media provenance, rejection
-  notes, retries, or selected state.
+- Asset import/selection exists, but has only been tested with local dummy files,
+  not actual downloaded provider outputs.
+- Candidate tracking exists, but retry grouping and automatic sibling rejection
+  are still basic.
 - Character/style continuity is planned but not yet enforced by reference-image
   lifecycle, style-lock prompts, or review gates.
 - Sound planning exists, but line-to-audio sync, music/SFX sourcing, subtitle

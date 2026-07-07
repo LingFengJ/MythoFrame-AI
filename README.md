@@ -191,7 +191,8 @@ never be committed to GitHub.
 
 This repository now has a manual-first engineering backbone with project
 bundles, stage prompts, collected-output inspection, subtitle export, rough-cut
-render hooks, and a local edit manifest flow.
+render hooks, generated-asset import/selection, missing-media checks, request
+dashboards, and a local edit manifest flow.
 
 ## Quickstart
 
@@ -261,6 +262,17 @@ Review current project status:
 
 ```powershell
 mythoframe review pilot-scene
+mythoframe requests pilot-scene --completed
+mythoframe doctor pilot-scene
+```
+
+Import generated assets downloaded from model websites:
+
+```powershell
+mythoframe import-asset pilot-scene storyboard ./downloads/shot1.png --shot 1 --candidate-id shot_001_a --provider "ImageSite"
+mythoframe select-asset pilot-scene shot_001_a
+mythoframe assets pilot-scene
+mythoframe missing-media pilot-scene
 ```
 
 Build a local edit decision list and export a text manifest:

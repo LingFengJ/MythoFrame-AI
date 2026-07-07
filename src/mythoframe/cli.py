@@ -8,12 +8,20 @@ from pathlib import Path
 from mythoframe.artifacts import apply_stage_output
 from mythoframe.assets import ASSET_TYPES, asset_path
 from mythoframe.bundle import pack_project, unpack_project
+from mythoframe.diagnostics import has_failures, run_doctor
 from mythoframe.manual_queue import (
     collect_response,
     create_request,
     is_ready,
+    list_completed,
     list_pending,
     wait_for_response,
+)
+from mythoframe.media import (
+    import_asset,
+    list_asset_candidates,
+    missing_media,
+    set_asset_status,
 )
 from mythoframe.output_tools import inspect_stage_output, repair_stage_output
 from mythoframe.prompts import get_stage_spec, list_stage_specs, render_stage_prompt
@@ -21,7 +29,7 @@ from mythoframe.project import ProjectSpec, init_project, project_dir, validate_
 from mythoframe.pilot import init_pilot_project
 from mythoframe.providers import ApiCommandProvider
 from mythoframe.renderer import render_rough_cut
-from mythoframe.schemas import GENERATION_MODES, STAGE_NAMES
+from mythoframe.schemas import ARTIFACT_STATUSES, GENERATION_MODES, STAGE_NAMES
 from mythoframe.subtitles import export_subtitles
 from mythoframe.timeline import export_edit_manifest, write_draft_edit_plan
 from mythoframe.workflow import (
@@ -120,6 +128,10 @@ def main(argv: list[str] | None = None) -> int:
     status_parser = subparsers.add_parser("status", help="Show pending generation requests.")
     status_parser.add_argument("slug", help="Project slug.")
 
+    requests_parser = subparsers.add_parser("requests", help="Show request dashboard.")
+    requests_parser.add_argument("slug", help="Project slug.")
+    requests_parser.add_argument("--completed", action="store_true", help="Include completed requests.")
+
     collect_parser = subparsers.add_parser("collect", help="Collect ready response files.")
     collect_parser.add_argument("slug", help="Project slug.")
     collect_parser.add_argument("--request-id", help="Collect one request id only.")
@@ -149,6 +161,12 @@ def main(argv: list[str] | None = None) -> int:
 
     validate_parser = subparsers.add_parser("validate", help="Validate project structure.")
     validate_parser.add_argument("slug", help="Project slug.")
+
+    doctor_parser = subparsers.add_parser("doctor", help="Run operational readiness checks.")
+    doctor_parser.add_argument("slug", nargs="?", help="Optional project slug.")
+    doctor_parser.add_argument("--openai-smoke", action="store_true", help="Run a tiny OpenAI API smoke test.")
+    doctor_parser.add_argument("--openai-model", default="gpt-4.1-mini")
+    doctor_parser.add_argument("--openai-max-output-tokens", type=int, default=16)
 
     review_parser = subparsers.add_parser("review", help="Summarize project workflow status.")
     review_parser.add_argument("slug", help="Project slug.")
@@ -186,6 +204,36 @@ def main(argv: list[str] | None = None) -> int:
     next_parser.add_argument("--source-file", help="Optional source brief path.")
     _add_request_metadata_args(next_parser)
 
+    assets_parser = subparsers.add_parser("assets", help="List generated asset candidates.")
+    assets_parser.add_argument("slug", help="Project slug.")
+    assets_parser.add_argument("--status", choices=ARTIFACT_STATUSES)
+
+    import_asset_parser = subparsers.add_parser("import-asset", help="Copy/register a generated asset.")
+    import_asset_parser.add_argument("slug", help="Project slug.")
+    import_asset_parser.add_argument("asset_type", choices=ASSET_TYPES)
+    import_asset_parser.add_argument("source", help="Local source file to import.")
+    import_asset_parser.add_argument("--candidate-id")
+    import_asset_parser.add_argument("--provider", default="")
+    import_asset_parser.add_argument("--request-id", default="")
+    import_asset_parser.add_argument("--notes", default="")
+    import_asset_parser.add_argument("--entity")
+    import_asset_parser.add_argument("--shot", type=int)
+    import_asset_parser.add_argument("--line", type=int)
+    import_asset_parser.add_argument("--cue")
+    import_asset_parser.add_argument("--label", default="rough_cut")
+    import_asset_parser.add_argument("--version", type=int, default=1)
+    import_asset_parser.add_argument("--ext")
+    import_asset_parser.add_argument("--force", action="store_true")
+
+    select_asset_parser = subparsers.add_parser("select-asset", help="Select/reject an asset candidate.")
+    select_asset_parser.add_argument("slug", help="Project slug.")
+    select_asset_parser.add_argument("candidate_id")
+    select_asset_parser.add_argument("--status", choices=ARTIFACT_STATUSES, default="selected")
+    select_asset_parser.add_argument("--notes", default="")
+
+    missing_media_parser = subparsers.add_parser("missing-media", help="Report referenced media files that are missing.")
+    missing_media_parser.add_argument("slug", help="Project slug.")
+
     asset_parser = subparsers.add_parser("asset-name", help="Print a conventional asset path.")
     asset_parser.add_argument("slug", help="Project slug.")
     asset_parser.add_argument("asset_type", choices=ASSET_TYPES)
@@ -218,6 +266,8 @@ def main(argv: list[str] | None = None) -> int:
         return _request_stage(root, args)
     if args.command == "status":
         return _status(root, args)
+    if args.command == "requests":
+        return _requests(root, args)
     if args.command == "collect":
         return _collect(root, args)
     if args.command == "apply-output":
@@ -228,6 +278,8 @@ def main(argv: list[str] | None = None) -> int:
         return _repair_output(root, args)
     if args.command == "validate":
         return _validate(root, args)
+    if args.command == "doctor":
+        return _doctor(root, args)
     if args.command == "review":
         return _review(root, args)
     if args.command == "draft-edit":
@@ -240,6 +292,14 @@ def main(argv: list[str] | None = None) -> int:
         return _render_rough_cut(root, args)
     if args.command == "next":
         return _next(root, args)
+    if args.command == "assets":
+        return _assets(root, args)
+    if args.command == "import-asset":
+        return _import_asset(root, args)
+    if args.command == "select-asset":
+        return _select_asset(root, args)
+    if args.command == "missing-media":
+        return _missing_media(root, args)
     if args.command == "asset-name":
         return _asset_name(root, args)
 
@@ -440,6 +500,29 @@ def _status(root: Path, args: argparse.Namespace) -> int:
     return 0
 
 
+def _requests(root: Path, args: argparse.Namespace) -> int:
+    path = project_dir(root, args.slug)
+    pending = list_pending(path)
+    completed = list_completed(path) if args.completed else []
+
+    print("Pending Requests:")
+    if not pending:
+        print("  none")
+    for record in pending:
+        state = "ready" if is_ready(record.response_path) else "waiting"
+        target = _request_target(record.target_site, record.target_model)
+        print(f"  {state:7} {record.stage:14} {record.mode:12} {target} {record.request_id}")
+
+    if args.completed:
+        print("\nCompleted Requests:")
+        if not completed:
+            print("  none")
+        for record in completed:
+            target = _request_target(record.target_site, record.target_model)
+            print(f"  done    {record.stage:14} {record.mode:12} {target} {record.request_id}")
+    return 0
+
+
 def _collect(root: Path, args: argparse.Namespace) -> int:
     path = project_dir(root, args.slug)
     records = list_pending(path)
@@ -512,6 +595,20 @@ def _validate(root: Path, args: argparse.Namespace) -> int:
         return 1
     print(f"Project validation passed: {path}")
     return 0
+
+
+def _doctor(root: Path, args: argparse.Namespace) -> int:
+    project_path = project_dir(root, args.slug) if args.slug else None
+    checks = run_doctor(
+        root,
+        project_path,
+        openai_smoke=args.openai_smoke,
+        openai_model=args.openai_model,
+        openai_max_output_tokens=args.openai_max_output_tokens,
+    )
+    for check in checks:
+        print(f"{check.status:4} {check.name:18} {check.detail}")
+    return 1 if has_failures(checks) else 0
 
 
 def _review(root: Path, args: argparse.Namespace) -> int:
@@ -631,6 +728,78 @@ def _next(root: Path, args: argparse.Namespace) -> int:
     )
 
 
+def _assets(root: Path, args: argparse.Namespace) -> int:
+    path = project_dir(root, args.slug)
+    candidates = list_asset_candidates(path, status=args.status)
+    if not candidates:
+        print("No asset candidates.")
+        return 0
+    for candidate in candidates:
+        print(
+            f"{candidate.get('status', ''):12} "
+            f"{candidate.get('asset_type', ''):12} "
+            f"{candidate.get('candidate_id', '')} "
+            f"{candidate.get('path', '')}"
+        )
+    return 0
+
+
+def _import_asset(root: Path, args: argparse.Namespace) -> int:
+    path = project_dir(root, args.slug)
+    source = Path(args.source)
+    if not source.is_absolute():
+        source = root / source
+    result = import_asset(
+        path,
+        source,
+        args.asset_type,
+        candidate_id=args.candidate_id,
+        provider=args.provider,
+        request_id=args.request_id,
+        notes=args.notes,
+        entity=args.entity,
+        shot=args.shot,
+        line=args.line,
+        cue=args.cue,
+        label=args.label,
+        version=args.version,
+        ext=args.ext,
+        force=args.force,
+    )
+    print(f"Imported: {result.destination}")
+    print(f"Candidate: {result.candidate_id}")
+    print(f"Manifest: {result.manifest_path}")
+    return 0
+
+
+def _select_asset(root: Path, args: argparse.Namespace) -> int:
+    path = project_dir(root, args.slug)
+    result = set_asset_status(
+        path,
+        args.candidate_id,
+        status=args.status,
+        notes=args.notes,
+    )
+    print(f"Candidate: {result.candidate_id}")
+    print(f"Status: {result.status}")
+    print("Updated:")
+    for updated in result.updated_files:
+        print(f"  {updated}")
+    return 0
+
+
+def _missing_media(root: Path, args: argparse.Namespace) -> int:
+    path = project_dir(root, args.slug)
+    missing = missing_media(path)
+    if not missing:
+        print("No missing referenced media.")
+        return 0
+    print("Missing referenced media:")
+    for item in missing:
+        print(f"  {item.source} {item.field}: {item.path}")
+    return 1
+
+
 def _asset_name(root: Path, args: argparse.Namespace) -> int:
     path = project_dir(root, args.slug)
     print(
@@ -675,3 +844,10 @@ def _request_metadata(args: argparse.Namespace) -> dict[str, str]:
         "target_site": getattr(args, "target_site", None) or "",
         "operator_notes": getattr(args, "operator_notes", None) or "",
     }
+
+
+def _request_target(site: str, model: str) -> str:
+    parts = [part for part in (site, model) if part]
+    if not parts:
+        return "-"
+    return "/".join(parts)

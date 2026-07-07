@@ -160,24 +160,28 @@ Suggested MVP outputs:
 - `sound_plan.csv`
 - `edit_plan.json`
 
-Once these files are reliable, provider integrations can be added for large
-language models, image generation, video generation, voice generation, music,
-storage, and final rendering.
+Once these files are reliable, provider integrations can be added for web UI
+operation or opt-in APIs covering large language models, image generation,
+video generation, voice generation, music, storage, and final rendering.
 
-## Accounts And Keys Eventually Needed
+## Accounts Eventually Needed
 
-Likely required:
+Baseline:
 
 - GitHub account for source control
-- LLM API key for script, prompt, and planning automation
-- Image generation account or API
-- Video generation account or API
-- Voice generation account or API
-- Music or sound-effect source
-- Cloud storage for generated assets
+- ChatGPT web or OpenAI access for script, prompt, and planning work
+- One image generation web account: ChatGPT Images, Gemini/Nano Banana, or
+  Seedream
+- Seedance 2.0 access through a Seedance-capable web platform for video and
+  native audio-video clips
+- Local `ffmpeg` for rough-cut rendering
 
 Optional later:
 
+- API keys for any provider the user explicitly wants to automate
+- Voice generation account if Seedance native audio is not clean enough
+- Music or sound-effect source if Seedance is not controllable enough
+- Cloud storage for generated assets
 - Web app hosting
 - Database hosting
 - Social media publishing accounts
@@ -228,7 +232,7 @@ mythoframe request-stage pilot-scene script
 
 Stage requests use the `seedance-first` provider profile by default: planning
 stages target ChatGPT/OpenAI, image prompts target your chosen image provider,
-and video/sound planning targets Seedance 2.0 first.
+and video/sound planning targets Seedance 2.0 through a web platform first.
 
 Or ask the CLI to choose the next incomplete stage:
 
@@ -276,7 +280,9 @@ Import generated assets downloaded from model websites:
 
 ```powershell
 mythoframe import-asset pilot-scene storyboard ./downloads/shot1.png --shot 1 --candidate-id shot_001_a --provider "ImageSite"
+mythoframe import-asset pilot-scene video_clip ./downloads/shot1.mp4 --shot 1 --candidate-id shot_001_clip_a --provider "Seedance 2.0 via web UI"
 mythoframe select-asset pilot-scene shot_001_a
+mythoframe select-asset pilot-scene shot_001_clip_a
 mythoframe assets pilot-scene
 mythoframe missing-media pilot-scene
 ```

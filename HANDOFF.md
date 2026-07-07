@@ -38,6 +38,9 @@ calls without explicit user approval.
 Default provider assumption: `seedance-first`.
 
 - Use Seedance 2.0 for video generation and native clip audio wherever possible.
+- Prefer Seedance through a Seedance-capable web platform first: Runway,
+  Higgsfield, or an official ByteDance/BytePlus/Volcengine UI if available.
+  Direct API access is optional later, not the default path.
 - Use one image provider: ChatGPT Images, Gemini/Nano Banana, or Seedream.
 - Treat ElevenLabs, Suno, Udio, Fish Audio, and similar tools as optional
   specialist fallbacks, not baseline requirements.
@@ -452,9 +455,9 @@ are true:
 
 ## Account And Setup Dependencies
 
-Do not hardcode these until the user chooses exact providers. Future agents
-should ask the user which accounts they want to use, then write provider
-playbooks around those choices.
+Default to web UI access unless the user explicitly chooses API automation.
+Future agents should write provider playbooks around the exact websites/accounts
+the user logs into.
 
 Required or likely required:
 
@@ -463,8 +466,9 @@ Required or likely required:
   prompt refinement: ChatGPT web or OpenAI is enough to start.
 - One logged-in image generation website for character references and storyboard
   frames: choose ChatGPT Images, Gemini/Nano Banana, or Seedream.
-- Logged-in Seedance 2.0 access for video and native audio-video clip
-  generation wherever possible.
+- Logged-in Seedance 2.0-capable web platform access for video and native
+  audio-video clip generation wherever possible. Runway, Higgsfield, or an
+  official ByteDance/BytePlus/Volcengine UI are acceptable starting points.
 - Local `ffmpeg` for automated rough cuts, unless editing is done manually in an
   external editor.
 - Enough local disk space for generated media and project bundles.
@@ -472,6 +476,8 @@ Required or likely required:
 Optional later:
 
 - API keys and wrappers for any provider the user explicitly wants to automate.
+  Do not make direct BytePlus/Volcengine API access the default unless the user
+  chooses that path.
 - ElevenLabs, Fish Audio, or CapCut voice tools if Seedance cannot provide clean
   enough dialogue, narration, or dubbing control.
 - Suno or Udio if Seedance cannot provide controllable music for the pilot.

@@ -42,12 +42,17 @@ SEEDANCE_FIRST_STAGE_PROVIDERS: dict[str, StageProvider] = {
         operator_notes="Generate character references and selected keyframes/storyboards before Seedance video.",
     ),
     "video_prompts": StageProvider(
-        target_site="Seedance 2.0",
+        target_site="Seedance-capable web platform",
         target_model="Seedance 2.0",
-        operator_notes="Seedance-first video stage. Prefer image-to-video from selected storyboard frames; use native audio where useful.",
+        operator_notes=(
+            "Seedance-first video stage. Prefer a web UI such as Runway, Higgsfield, "
+            "or an official ByteDance/BytePlus UI if available; avoid direct API "
+            "unless explicitly chosen. Prefer image-to-video from selected storyboard "
+            "frames and use native audio where useful."
+        ),
     ),
     "sound_plan": StageProvider(
-        target_site="Seedance 2.0 first; optional specialist audio fallback",
+        target_site="Seedance-capable web platform first; optional specialist audio fallback",
         target_model="Seedance 2.0 native audio-video; ElevenLabs/Suno/Udio only if needed",
         operator_notes="Plan sound for Seedance native clip audio first. Add separate voice/music tools only if Seedance control is insufficient.",
     ),

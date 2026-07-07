@@ -126,7 +126,7 @@ class BackboneTests(TestCase):
             pending = project_dir(root, "pilot") / "requests" / "pending"
             request_text = next(pending.glob("*.request.md")).read_text(encoding="utf-8")
             self.assertIn("- Provider Profile: seedance-first", request_text)
-            self.assertIn("- Target Site: Seedance 2.0", request_text)
+            self.assertIn("- Target Site: Seedance-capable web platform", request_text)
             self.assertIn("- Target Model: Seedance 2.0", request_text)
 
     def test_cli_request_stage_allows_provider_override(self) -> None:

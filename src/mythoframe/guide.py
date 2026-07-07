@@ -23,12 +23,13 @@ adaptation -> script -> characters -> shot_table -> image_prompts -> video_promp
 ## Seedance-First Media Loop
 
 Use Seedance for generated video clips and native clip audio whenever possible.
+Use a Seedance-capable web platform first: Runway, Higgsfield, or an official ByteDance/BytePlus UI if available.
 Use one image provider for references/keyframes: ChatGPT Images, Gemini/Nano Banana, or Seedream.
 `request-stage` and `next` use the seedance-first provider profile by default.
 
 mythoframe import-asset {slug} storyboard <downloaded-image> --shot 1 --candidate-id shot_001_a --provider "<image provider>"
 mythoframe select-asset {slug} shot_001_a
-mythoframe import-asset {slug} video_clip <seedance-video> --shot 1 --candidate-id shot_001_clip_a --provider "Seedance 2.0"
+mythoframe import-asset {slug} video_clip <seedance-video> --shot 1 --candidate-id shot_001_clip_a --provider "Seedance 2.0 via web UI"
 mythoframe select-asset {slug} shot_001_clip_a
 mythoframe assets {slug}
 mythoframe missing-media {slug}
@@ -56,8 +57,12 @@ def provider_guide() -> str:
 - GitHub: source control.
 - Text/planning model: ChatGPT web or OpenAI, used for scripts, prompt plans, shot tables, sound plans, and edit plans.
 - Image provider: choose one of ChatGPT Images, Gemini/Nano Banana, or Seedream.
-- Video/audio-video provider: Seedance 2.0, used for image-to-video/text-to-video and native clip audio where possible.
+- Video/audio-video provider: Seedance 2.0 through a Seedance-capable web platform, used for image-to-video/text-to-video and native clip audio where possible.
 - Local ffmpeg: local rough-cut assembly.
+
+## Access Rule
+
+Prefer web UI access first: Runway, Higgsfield, or an official ByteDance/BytePlus UI if available. Treat direct API access as an optional later backend only after the user explicitly chooses API automation and accepts the provider cost/onboarding requirements.
 
 ## Not Required At First
 

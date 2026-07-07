@@ -27,14 +27,15 @@ adaptation -> script -> characters -> shot_table -> image_prompts -> video_promp
 
 ## Seedance-First Media Loop
 
-Use Seedance for video and native clip audio when possible. Use one image tool:
-ChatGPT Images, Gemini/Nano Banana, or Seedream.
+Use Seedance through a Seedance-capable web platform for video and native clip
+audio when possible. Use one image tool: ChatGPT Images, Gemini/Nano Banana, or
+Seedream.
 
 ```powershell
 mythoframe import-asset pilot-scene storyboard .\downloads\shot1.png --shot 1 --candidate-id shot_001_a --provider "ChatGPT Images"
 mythoframe select-asset pilot-scene shot_001_a
 
-mythoframe import-asset pilot-scene video_clip .\downloads\shot1.mp4 --shot 1 --candidate-id shot_001_clip_a --provider "Seedance 2.0"
+mythoframe import-asset pilot-scene video_clip .\downloads\shot1.mp4 --shot 1 --candidate-id shot_001_clip_a --provider "Seedance 2.0 via web UI"
 mythoframe select-asset pilot-scene shot_001_clip_a
 
 mythoframe assets pilot-scene

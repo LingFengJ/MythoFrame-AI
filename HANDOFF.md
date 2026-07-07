@@ -236,34 +236,252 @@ When Codex is asked to operate model websites:
 The project itself does not directly control Codex browser/computer-use tools.
 It creates durable request files that a Codex agent can operate against.
 
-## Likely Next Engineering Steps
+## Direction Check
 
-Good next steps, in order:
+The current direction is correct for the user's goal: make the project usable
+with logged-in web accounts first, while keeping API automation optional and
+off by default.
 
-1. Add stage-specific prompt templates for script, character bible, shot table,
-   image prompts, video prompts, sound plan, and edit plan. Done.
-2. Add a command to generate those prompts from a project bible and source
-   brief. Done.
-3. Add schema validation for CSV/JSON artifacts beyond file existence. Initial
-   row-level validation exists; deepen it as schemas become stricter.
-4. Add a rough-cut edit plan schema before implementing any renderer. Done:
-   initial schema, prompt, local draft builder, manifest export, subtitle
-   export, and optional `ffmpeg` renderer exist.
-5. Add project bundle import/export for generated work ignored by Git. Done.
-6. Add collected-output inspection and mechanical repair helpers. Done.
-7. Add a small local web UI only after the CLI workflow is solid.
-8. Add provider adapters last, keeping them opt-in and disabled by default.
+The right target state is not "one hidden script calls every provider." The
+right target state is:
+
+1. The project owns the structured production truth.
+2. Humans or Codex operate high-quality model websites from durable request
+   files.
+3. Every external output is collected, inspected, repaired if needed, and only
+   then promoted into canonical project artifacts.
+4. Generated media is imported, selected, and registered in the project before
+   editing.
+5. A local renderer or export manifest can assemble a reviewable cut once the
+   logged-in accounts have produced the needed clips and sound.
+
+This approach is slower than direct API automation, but it matches the cost
+constraint and keeps the workflow resilient when model websites, prices, or
+terms change.
+
+## Done
+
+Current completed backbone:
+
+- Repository, README, docs, tests, and GitHub remote are set up.
+- Manual-first project skeleton exists.
+- Offline original pilot scaffold exists.
+- Stage prompt templates exist for `adaptation`, `script`, `characters`,
+  `shot_table`, `image_prompts`, `video_prompts`, `sound_plan`, and
+  `edit_plan`.
+- CLI can render prompts and create requests with `manual_file`, `codex_web`,
+  or opt-in `api_command` modes.
+- Manual response queue exists with collect/apply flow.
+- Collected output remains raw until `apply-output` promotes it.
+- Structural validation exists for required files, JSON, CSV headers, row
+  values, statuses, and cross-file shot references.
+- `review` and `next` identify the next incomplete stage.
+- Artifact application has backup and rollback behavior.
+- Collected-output inspection and mechanical repair helpers exist.
+- Asset naming conventions exist for storyboard, character reference, image,
+  video, voice, music, SFX, subtitle, and export files.
+- Draft edit plan builder and text manifest export exist.
+- SRT/VTT subtitle export exists.
+- Optional `ffmpeg` rough-cut command exists, with clear failure when `ffmpeg`
+  or clip files are missing.
+- Project pack/unpack exists for moving ignored generated work between
+  machines.
+- Tests cover the core CLI/project/queue/apply/bundle/subtitle/renderer
+  preflight paths.
+
+## Roadmap To Account-Ready Use
+
+The remaining work should move in this order. Keep each step usable without API
+keys unless the user explicitly requests an API wrapper.
+
+The next milestone should be one real 60-90 second pilot run. Do not jump to a
+generic UI or broad provider integrations before the project proves the
+end-to-end loop with actual generated images, clips, voices, music/SFX,
+subtitles, and a review cut.
+
+### Phase 1: Real Pilot Hardening
+
+Goal: prove the whole structured workflow on one short, using either an
+original idea or source material the user has the rights to use.
+
+- Add source-rights metadata and safety checks so adapted material, excerpts,
+  uploads, and publishing rights are not treated casually.
+- Add a `doctor` command that checks Python version, package install, project
+  validity, writable folders, optional `ffmpeg`, and useful environment
+  variables.
+- Add an `import-asset` command to copy or register generated image, video, and
+  audio files into the expected asset folders.
+- Add a `select-asset` command or metadata update flow so chosen image/video
+  candidates become the selected assets referenced by CSV and `edit_plan.json`.
+- Add candidate tracking for generated media: candidate id, provider/site,
+  prompt/request source, output path, selected/rejected status, rejection notes,
+  retry notes, and provenance.
+- Add richer review commands for visual continuity, character consistency,
+  prompt completeness, audio coverage, and missing selected assets.
+- Add continuity controls around character references, style-lock prompts,
+  negative prompts, per-character reference-image lifecycle, and visual drift
+  review.
+- Add a shot-level generation loop: image candidates -> selected frame -> video
+  prompt -> generated clips -> selected clip -> retry/repair decision.
+- Run an end-to-end pilot through all stages using manual paste only.
+- Update prompt templates based on the first pilot's failures, especially
+  character consistency, shot simplicity, and video motion clarity.
+
+### Phase 2: Codex Web Operator Playbooks
+
+Goal: once the user is logged into required websites, Codex can operate the
+workflow repeatably from pending request files.
+
+- Add provider-neutral operator docs for text, image, image-to-video, voice,
+  music, and SFX generation.
+- Add target-site fields and run notes to requests in a way that works for
+  browser automation, computer use, or manual paste.
+- Add a `requests` dashboard command that groups pending work by stage and mode.
+- Add explicit upload safety prompts for copyrighted/private source material.
+- Add per-provider playbooks only after the user chooses actual websites.
+- Record what each website returns and where downloaded assets should be saved.
+- Exercise at least one live text, image, video, and voice/music/SFX workflow
+  with logged-in accounts before calling the project account-ready.
+- Keep all website automation best-effort; a manual response file fallback must
+  always remain available.
+
+### Phase 3: Media Assembly
+
+Goal: after generated assets exist locally, the project can produce a watchable
+review cut.
+
+- Strengthen `edit_plan.json` validation for clips, audio groups, subtitles,
+  timing, transitions, and runtime.
+- Improve `render-rough-cut` from concat-only behavior to robust `ffmpeg`
+  rendering with re-encoding, scaling to 16:9, audio placement, subtitles, and
+  loudness normalization.
+- Add missing-media reports before rendering.
+- Add sound implementation checks: line-to-audio mapping, voice duration,
+  subtitle sync, music/SFX timing, ambience coverage, and loudness targets.
+- Add export formats for human editors, such as CSV/EDL-style manifests and
+  clear per-shot asset lists.
+- Add final QA checks for duration, aspect ratio, missing captions, missing
+  dialogue, missing music/SFX, and unresolved review statuses.
+- Test a real rough cut with actual generated clips and audio for a complete
+  60-90 second pilot.
+
+### Phase 4: Local UI
+
+Goal: make the workflow practical for repeated use without memorizing commands.
+
+- Add a small local UI after the CLI is stable.
+- First screen should be an operational dashboard, not a marketing page.
+- Show current project, stage status, pending requests, paste targets, collected
+  outputs, selected assets, and render/export actions.
+- Keep all actions backed by the same CLI/file workflow so the UI does not
+  become a separate system.
+
+### Phase 5: Optional API Wrappers
+
+Goal: allow automation for users who explicitly choose API spending.
+
+- Keep `api_command` as the integration boundary.
+- Add example local wrapper scripts only when the user asks for a specific
+  provider.
+- Never store API keys in committed files.
+- Never make API mode the default.
+
+## Ready-For-Use Definition
+
+The project is "ready once accounts are logged in" when all of the following
+are true:
+
+- A user can create a project from an original idea or rights-cleared source.
+- `mythoframe next <slug>` can drive every planning stage through request,
+  collect, inspect, apply, and validate.
+- A Codex agent can read pending requests and operate the chosen logged-in model
+  websites using documented playbooks.
+- At least one logged-in text, image, video, and sound/voice provider workflow
+  has been tested end to end, even if the provider-specific automation remains
+  partly manual.
+- A manual paste fallback exists for every external generation step.
+- Generated images, clips, voice, music, and SFX can be imported or registered
+  into the project without hand-editing paths.
+- Selected assets can be linked to prompts, shots, voice lines, sound cues, and
+  edit clips.
+- Candidate assets retain provenance, selected/rejected state, and retry notes.
+- The project can export subtitles, an edit manifest, and a rough cut from local
+  assets.
+- The rough cut has been tested with real generated clips and audio, not only
+  with preflight checks.
+- The user can bundle the full local project and continue on another machine.
+- Validation catches missing or malformed files before export.
+- Review gates cover continuity, timing, sound coverage, and unresolved drafts;
+  structural validation alone is not considered release-ready.
+- No paid API call, upload, account creation, or purchase happens without an
+  explicit user action.
+
+## Account And Setup Dependencies
+
+Do not hardcode these until the user chooses exact providers. Future agents
+should ask the user which accounts they want to use, then write provider
+playbooks around those choices.
+
+Required or likely required:
+
+- GitHub access for source control.
+- Logged-in text model website for adaptation, script, planning, and prompt
+  refinement.
+- Logged-in image generation website for character references and storyboard
+  frames.
+- Logged-in image-to-video generation website for shot clips.
+- Logged-in voice or dubbing website for dialogue and narration.
+- Music and SFX source, either generated, licensed, or user-provided.
+- Local `ffmpeg` for automated rough cuts, unless editing is done manually in an
+  external editor.
+- Enough local disk space for generated media and project bundles.
+
+Optional later:
+
+- API keys and wrappers for any provider the user explicitly wants to automate.
+- Cloud storage for moving large generated assets.
+- Social media accounts for publishing.
+- Editing app integration for CapCut, Premiere Pro, DaVinci Resolve, or another
+  editor.
+
+## Provider Selection Guidance
+
+Provider-specific work should wait until the user selects target accounts. When
+adding one:
+
+- Add docs first: login assumptions, upload/download steps, expected output
+  files, naming convention, and known manual fallback.
+- Add automation second: browser/computer-use instructions that operate pending
+  request files.
+- Add API wrappers last and only as opt-in examples.
+- Verify current website terms, pricing, and content policies before relying on
+  any provider-specific workflow.
 
 ## Current Risks
 
 - Offline original pilot scaffolding exists, but no user-selected source project
   has been created yet.
 - No book, manga, or user-owned story source has been selected.
+- Rights/source handling is not yet implemented beyond human caution in docs.
 - No provider web workflows have been tested against live model sites.
+- No asset import/selection command exists yet, so generated media still needs
+  careful manual path placement.
+- No candidate tracking exists yet for generated media provenance, rejection
+  notes, retries, or selected state.
+- Character/style continuity is planned but not yet enforced by reference-image
+  lifecycle, style-lock prompts, or review gates.
+- Sound planning exists, but line-to-audio sync, music/SFX sourcing, subtitle
+  sync, and loudness checks are not production-ready.
 - Rough-cut rendering exists, but it has not been exercised with real generated
   clips in a production project.
 - Asset naming conventions exist, but no real generated assets have been linked
   through a production project yet.
+- Current validation is structural. It does not prove the short is coherent,
+  emotionally timed, visually consistent, or publishable.
+- Manual-first operation can become copy-paste heavy unless Codex web playbooks
+  and asset ingestion become procedural.
+- Web model workflows will be brittle because provider UIs change; the file
+  queue is the mitigation, not a complete solution.
 - `projects/*/requests`, `projects/*/outputs`, and `projects/*/assets` are
   ignored, so generated work products are local unless bundled, separately
   exported, or explicitly tracked.

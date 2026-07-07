@@ -29,6 +29,11 @@ from mythoframe.prompts import get_stage_spec, list_stage_specs, render_stage_pr
 from mythoframe.project import ProjectSpec, init_project, project_dir, validate_project
 from mythoframe.pilot import init_pilot_project
 from mythoframe.providers import ApiCommandProvider
+from mythoframe.provider_profiles import (
+    DEFAULT_PROVIDER_PROFILE,
+    provider_profile_names,
+    stage_provider,
+)
 from mythoframe.renderer import render_rough_cut
 from mythoframe.schemas import ARTIFACT_STATUSES, GENERATION_MODES, STAGE_NAMES
 from mythoframe.subtitles import export_subtitles
@@ -129,6 +134,11 @@ def main(argv: list[str] | None = None) -> int:
     stage_request_parser.add_argument("--wait", action="store_true", help="Wait for manual response.")
     stage_request_parser.add_argument("--poll-seconds", type=float, default=10.0)
     stage_request_parser.add_argument("--timeout-seconds", type=float, default=0.0)
+    stage_request_parser.add_argument(
+        "--provider-profile",
+        choices=provider_profile_names(),
+        default=DEFAULT_PROVIDER_PROFILE,
+    )
     _add_request_metadata_args(stage_request_parser)
 
     status_parser = subparsers.add_parser("status", help="Show pending generation requests.")
@@ -208,6 +218,11 @@ def main(argv: list[str] | None = None) -> int:
         help="Generation mode. Defaults to manual_file.",
     )
     next_parser.add_argument("--source-file", help="Optional source brief path.")
+    next_parser.add_argument(
+        "--provider-profile",
+        choices=provider_profile_names(),
+        default=DEFAULT_PROVIDER_PROFILE,
+    )
     _add_request_metadata_args(next_parser)
 
     assets_parser = subparsers.add_parser("assets", help="List generated asset candidates.")
@@ -368,7 +383,7 @@ def _unpack(root: Path, args: argparse.Namespace) -> int:
 def _request(root: Path, args: argparse.Namespace) -> int:
     path = project_dir(root, args.slug)
     prompt = _load_prompt(args.prompt, args.prompt_file)
-    metadata = _request_metadata(args)
+    metadata = _request_metadata(args, stage=args.stage, provider_profile=args.provider_profile)
     return _submit_request(
         path=path,
         stage=args.stage,
@@ -479,7 +494,7 @@ def _request_stage(root: Path, args: argparse.Namespace) -> int:
         args.stage,
         source_file=Path(args.source_file) if args.source_file else None,
     )
-    metadata = _request_metadata(args)
+    metadata = _request_metadata(args, stage=args.stage, provider_profile=args.provider_profile)
     metadata["expected_artifacts"] = ", ".join(spec.output_artifacts)
     metadata["expected_format"] = spec.expected_format
     metadata["stage_title"] = spec.title
@@ -850,12 +865,24 @@ def _add_request_metadata_args(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--operator-notes", help="Notes for the human or Codex operator.")
 
 
-def _request_metadata(args: argparse.Namespace) -> dict[str, str]:
-    return {
+def _request_metadata(
+    args: argparse.Namespace,
+    *,
+    stage: str | None = None,
+    provider_profile: str | None = None,
+) -> dict[str, str]:
+    metadata = {
         "target_model": getattr(args, "target_model", None) or "",
         "target_site": getattr(args, "target_site", None) or "",
         "operator_notes": getattr(args, "operator_notes", None) or "",
     }
+    if stage and provider_profile:
+        defaults = stage_provider(stage, provider_profile)
+        metadata["provider_profile"] = provider_profile
+        metadata["target_model"] = metadata["target_model"] or defaults.target_model
+        metadata["target_site"] = metadata["target_site"] or defaults.target_site
+        metadata["operator_notes"] = metadata["operator_notes"] or defaults.operator_notes
+    return metadata
 
 
 def _request_target(site: str, model: str) -> str:

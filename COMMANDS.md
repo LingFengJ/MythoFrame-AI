@@ -15,6 +15,10 @@ mythoframe apply-output pilot-scene <stage>
 mythoframe validate pilot-scene
 ```
 
+`next` and `request-stage` default to the `seedance-first` provider profile.
+Override with `--target-site`, `--target-model`, or `--operator-notes` only when
+needed.
+
 Repeat the loop through:
 
 ```text

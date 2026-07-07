@@ -24,6 +24,7 @@ adaptation -> script -> characters -> shot_table -> image_prompts -> video_promp
 
 Use Seedance for generated video clips and native clip audio whenever possible.
 Use one image provider for references/keyframes: ChatGPT Images, Gemini/Nano Banana, or Seedream.
+`request-stage` and `next` use the seedance-first provider profile by default.
 
 mythoframe import-asset {slug} storyboard <downloaded-image> --shot 1 --candidate-id shot_001_a --provider "<image provider>"
 mythoframe select-asset {slug} shot_001_a

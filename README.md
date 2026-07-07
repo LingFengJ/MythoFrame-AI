@@ -226,6 +226,10 @@ Create a stage-specific request from project files:
 mythoframe request-stage pilot-scene script
 ```
 
+Stage requests use the `seedance-first` provider profile by default: planning
+stages target ChatGPT/OpenAI, image prompts target your chosen image provider,
+and video/sound planning targets Seedance 2.0 first.
+
 Or ask the CLI to choose the next incomplete stage:
 
 ```powershell

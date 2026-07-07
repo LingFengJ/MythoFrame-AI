@@ -2,6 +2,11 @@
 
 Default profile: `seedance-first`.
 
+`mythoframe request-stage` and `mythoframe next` use this profile by default.
+The request metadata tells a human or Codex operator which site/model should be
+used for the stage. You can override this per request with `--target-site`,
+`--target-model`, or `--operator-notes`.
+
 ## Minimum Accounts
 
 - GitHub: source control and project continuity.
@@ -47,3 +52,16 @@ ffmpeg
 
 Add specialist audio/music accounts only after one real pilot proves they are
 needed.
+
+## Stage Routing Defaults
+
+| Stage | Default target |
+| --- | --- |
+| `adaptation` | ChatGPT web or OpenAI |
+| `script` | ChatGPT web or OpenAI |
+| `characters` | ChatGPT web or OpenAI |
+| `shot_table` | ChatGPT web or OpenAI |
+| `image_prompts` | ChatGPT Images, Gemini/Nano Banana, or Seedream |
+| `video_prompts` | Seedance 2.0 |
+| `sound_plan` | Seedance 2.0 first, specialist audio only if needed |
+| `edit_plan` | Local ffmpeg after Seedance downloads |

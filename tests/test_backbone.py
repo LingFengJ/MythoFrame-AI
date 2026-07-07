@@ -114,6 +114,49 @@ class BackboneTests(TestCase):
             self.assertIn("## Acceptance Checklist", request_text)
             self.assertIn("MythoFrame Stage Prompt: Script", request_text)
 
+    def test_cli_request_stage_uses_seedance_first_provider_defaults(self) -> None:
+        with TemporaryDirectory() as tmp:
+            repo_root = Path(__file__).resolve().parents[1]
+            root = Path(tmp)
+            shutil.copytree(repo_root / "prompts", root / "prompts")
+            init_project(root, ProjectSpec(slug="pilot", title="Pilot"))
+
+            self.assertEqual(main(["--root", tmp, "request-stage", "pilot", "video_prompts"]), 0)
+
+            pending = project_dir(root, "pilot") / "requests" / "pending"
+            request_text = next(pending.glob("*.request.md")).read_text(encoding="utf-8")
+            self.assertIn("- Provider Profile: seedance-first", request_text)
+            self.assertIn("- Target Site: Seedance 2.0", request_text)
+            self.assertIn("- Target Model: Seedance 2.0", request_text)
+
+    def test_cli_request_stage_allows_provider_override(self) -> None:
+        with TemporaryDirectory() as tmp:
+            repo_root = Path(__file__).resolve().parents[1]
+            root = Path(tmp)
+            shutil.copytree(repo_root / "prompts", root / "prompts")
+            init_project(root, ProjectSpec(slug="pilot", title="Pilot"))
+
+            self.assertEqual(
+                main(
+                    [
+                        "--root",
+                        tmp,
+                        "request-stage",
+                        "pilot",
+                        "image_prompts",
+                        "--target-site",
+                        "Seedream",
+                    ]
+                ),
+                0,
+            )
+
+            pending = project_dir(root, "pilot") / "requests" / "pending"
+            request_text = next(pending.glob("*.request.md")).read_text(encoding="utf-8")
+            self.assertIn("- Provider Profile: seedance-first", request_text)
+            self.assertIn("- Target Site: Seedream", request_text)
+            self.assertNotIn("- Target Site: ChatGPT Images", request_text)
+
     def test_validation_rejects_bad_csv_header(self) -> None:
         with TemporaryDirectory() as tmp:
             root = Path(tmp)

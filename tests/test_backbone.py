@@ -10,6 +10,7 @@ from unittest import TestCase
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 from mythoframe.assets import asset_path
+from mythoframe.artifacts import apply_stage_output
 from mythoframe.manual_queue import collect_response, create_request, is_ready
 from mythoframe.cli import main
 from mythoframe.pilot import init_pilot_project
@@ -211,3 +212,127 @@ class BackboneTests(TestCase):
         with TemporaryDirectory() as tmp:
             self.assertEqual(main(["--root", tmp, "pilot", "pilot-scene"]), 0)
             self.assertEqual(main(["--root", tmp, "review", "pilot-scene"]), 0)
+
+    def test_apply_markdown_output_updates_script(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            init_project(root, ProjectSpec(slug="pilot", title="Pilot"))
+            path = project_dir(root, "pilot")
+            output_dir = path / "outputs" / "script"
+            output_dir.mkdir(parents=True, exist_ok=True)
+            output = output_dir / "001.md"
+            output.write_text("```markdown\n# Pilot Script\n\nScene text.\n```", encoding="utf-8")
+
+            result = apply_stage_output(path, "script", output)
+
+            self.assertEqual(result.written_files, (path / "script.md",))
+            self.assertEqual((path / "script.md").read_text(encoding="utf-8").strip(), "# Pilot Script\n\nScene text.")
+
+    def test_apply_json_output_normalizes_characters(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            init_project(root, ProjectSpec(slug="pilot", title="Pilot"))
+            path = project_dir(root, "pilot")
+            output_dir = path / "outputs" / "characters"
+            output_dir.mkdir(parents=True, exist_ok=True)
+            output = output_dir / "001.md"
+            output.write_text(
+                (
+                    "```json\n"
+                    '{"characters":[{"id":"courier","name":"Courier",'
+                    '"reference_prompt":"ref","consistency_prompt":"same"}],'
+                    '"consistency_rules":[]}'
+                    "\n```"
+                ),
+                encoding="utf-8",
+            )
+
+            apply_stage_output(path, "characters", output)
+            data = json.loads((path / "characters.json").read_text(encoding="utf-8"))
+
+            self.assertEqual(data["characters"][0]["id"], "courier")
+            self.assertEqual(validate_project(path), [])
+
+    def test_apply_sound_plan_splits_two_csv_blocks(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            init_project(root, ProjectSpec(slug="pilot", title="Pilot"))
+            path = project_dir(root, "pilot")
+            (path / "shot_table.csv").write_text(
+                (
+                    "shot_number,duration,camera_movement,framing,visual_description,"
+                    "image_prompt,video_prompt,dialogue,narration,music,sound_effects,"
+                    "review_status\n"
+                    "1,3s,pan,wide,scene,img,vid,Hello,,soft,wind,draft\n"
+                ),
+                encoding="utf-8",
+            )
+            output_dir = path / "outputs" / "sound_plan"
+            output_dir.mkdir(parents=True, exist_ok=True)
+            output = output_dir / "001.md"
+            output.write_text(
+                (
+                    "```csv\n"
+                    "line_id,shot_number,speaker,text,voice_style,status,audio_asset\n"
+                    "1,1,Courier,Hello,warm,draft,assets/audio/voice/shot_001_line_001_v001.wav\n"
+                    "```\n\n"
+                    "```csv\n"
+                    "cue_id,shot_number,cue_type,description,timing,status,audio_asset\n"
+                    "wind,1,sfx,Wind through stone,whole shot,draft,assets/audio/sfx/shot_001_wind_v001.wav\n"
+                    "```"
+                ),
+                encoding="utf-8",
+            )
+
+            apply_stage_output(path, "sound_plan", output)
+
+            self.assertIn("Courier", (path / "voice_lines.csv").read_text(encoding="utf-8"))
+            self.assertIn("Wind through stone", (path / "sound_plan.csv").read_text(encoding="utf-8"))
+            self.assertEqual(validate_project(path), [])
+
+    def test_apply_invalid_output_rolls_back(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            init_project(root, ProjectSpec(slug="pilot", title="Pilot"))
+            path = project_dir(root, "pilot")
+            original = (path / "characters.json").read_text(encoding="utf-8")
+            output_dir = path / "outputs" / "characters"
+            output_dir.mkdir(parents=True, exist_ok=True)
+            output = output_dir / "001.md"
+            output.write_text('{"characters":"not a list"}', encoding="utf-8")
+
+            with self.assertRaises(ValueError):
+                apply_stage_output(path, "characters", output)
+
+            self.assertEqual((path / "characters.json").read_text(encoding="utf-8"), original)
+
+    def test_cli_apply_output_and_draft_edit_manifest(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            init_project(root, ProjectSpec(slug="pilot", title="Pilot"))
+            path = project_dir(root, "pilot")
+            output_dir = path / "outputs" / "shot_table"
+            output_dir.mkdir(parents=True, exist_ok=True)
+            output = output_dir / "001.md"
+            output.write_text(
+                (
+                    "```csv\n"
+                    "shot_number,duration,camera_movement,framing,visual_description,"
+                    "image_prompt,video_prompt,dialogue,narration,music,sound_effects,"
+                    "review_status\n"
+                    "1,3s,pan,wide,scene,img,vid,,,,,draft\n"
+                    "```"
+                ),
+                encoding="utf-8",
+            )
+
+            self.assertEqual(
+                main(["--root", tmp, "apply-output", "pilot", "shot_table"]),
+                0,
+            )
+            self.assertEqual(main(["--root", tmp, "draft-edit", "pilot"]), 0)
+            self.assertEqual(main(["--root", tmp, "export-manifest", "pilot"]), 0)
+            manifest = path / "assets" / "exports" / "edit_manifest.txt"
+
+            self.assertTrue(manifest.exists())
+            self.assertIn("shot 1", manifest.read_text(encoding="utf-8"))

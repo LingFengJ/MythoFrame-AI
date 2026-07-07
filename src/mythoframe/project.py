@@ -316,6 +316,15 @@ def _validate_json_shape(path: Path, value: object) -> list[str]:
             problems.append(f"Expected `subtitles` list in {path}")
         if not isinstance(value.get("review_gates"), list):
             problems.append(f"Expected `review_gates` list in {path}")
+        clips = value.get("clips")
+        if isinstance(clips, list):
+            for index, clip in enumerate(clips, start=1):
+                if not isinstance(clip, dict):
+                    problems.append(f"Expected clip {index} to be an object in {path}")
+                    continue
+                for key in ("shot_number", "video_asset", "start", "duration"):
+                    if clip.get(key) in (None, ""):
+                        problems.append(f"Missing `{key}` for clip {index} in {path}")
     return problems
 
 

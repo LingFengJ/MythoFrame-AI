@@ -47,11 +47,14 @@ Tracked project backbone:
 - `src/mythoframe/cli.py`: CLI entrypoint.
 - `src/mythoframe/project.py`: project skeleton creation and validation.
 - `src/mythoframe/manual_queue.py`: file-based request/response queue.
+- `src/mythoframe/artifacts.py`: applies collected outputs to canonical project
+  artifacts with validation rollback.
 - `src/mythoframe/providers.py`: opt-in command-based API provider hook.
 - `src/mythoframe/prompts.py`: stage template rendering.
 - `src/mythoframe/assets.py`: asset naming conventions.
 - `src/mythoframe/pilot.py`: offline original pilot scaffolding.
 - `src/mythoframe/workflow.py`: stage status and review helpers.
+- `src/mythoframe/timeline.py`: local edit-plan and manifest helpers.
 - `src/mythoframe/schemas.py`: shared constants.
 - `docs/architecture.md`: file-first architecture.
 - `docs/workflow.md`: pilot/review/validation workflow.
@@ -130,6 +133,14 @@ file:
 
 ```powershell
 mythoframe collect pilot-scene
+mythoframe apply-output pilot-scene script
+```
+
+Create and export local edit planning artifacts:
+
+```powershell
+mythoframe draft-edit pilot-scene
+mythoframe export-manifest pilot-scene
 ```
 
 Create a Codex-assisted web request:
@@ -195,7 +206,7 @@ Good next steps, in order:
 3. Add schema validation for CSV/JSON artifacts beyond file existence. Initial
    row-level validation exists; deepen it as schemas become stricter.
 4. Add a rough-cut edit plan schema before implementing any renderer. Initial
-   schema and prompt exist; deepen before rendering.
+   schema, prompt, local draft builder, and manifest export exist.
 5. Add an `ffmpeg` rough-cut renderer only after asset path conventions are
    stable.
 6. Add a small local web UI only after the CLI workflow is solid.

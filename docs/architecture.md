@@ -66,6 +66,14 @@ The edit plan schema is intentionally an edit decision list: timeline metadata,
 clip placements, audio placements, subtitles, review gates, and automation notes.
 Rendering is a later layer.
 
+Collected model output is not project truth until it is applied:
+
+```powershell
+mythoframe collect <slug>
+mythoframe apply-output <slug> <stage>
+mythoframe validate <slug>
+```
+
 ## Prompt Layer
 
 Stage prompts live in `prompts/stages/`. They can be rendered without calling a

@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
+from mythoframe.artifacts import apply_stage_output
 from mythoframe.assets import ASSET_TYPES, asset_path
 from mythoframe.manual_queue import (
     collect_response,
@@ -18,7 +19,13 @@ from mythoframe.project import ProjectSpec, init_project, project_dir, validate_
 from mythoframe.pilot import init_pilot_project
 from mythoframe.providers import ApiCommandProvider
 from mythoframe.schemas import GENERATION_MODES, STAGE_NAMES
-from mythoframe.workflow import next_stage, pending_request_summary, stage_statuses
+from mythoframe.timeline import export_edit_manifest, write_draft_edit_plan
+from mythoframe.workflow import (
+    latest_collected_outputs,
+    next_stage,
+    pending_request_summary,
+    stage_statuses,
+)
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -104,11 +111,34 @@ def main(argv: list[str] | None = None) -> int:
     collect_parser.add_argument("slug", help="Project slug.")
     collect_parser.add_argument("--request-id", help="Collect one request id only.")
 
+    apply_parser = subparsers.add_parser(
+        "apply-output",
+        help="Apply collected output to canonical project artifacts.",
+    )
+    apply_parser.add_argument("slug", help="Project slug.")
+    apply_parser.add_argument("stage", choices=STAGE_NAMES, help="Workflow stage.")
+    apply_parser.add_argument("--output-file", help="Specific collected output file. Defaults to latest.")
+    apply_parser.add_argument(
+        "--keep-invalid",
+        action="store_true",
+        help="Keep applied files even if project validation fails.",
+    )
+
     validate_parser = subparsers.add_parser("validate", help="Validate project structure.")
     validate_parser.add_argument("slug", help="Project slug.")
 
     review_parser = subparsers.add_parser("review", help="Summarize project workflow status.")
     review_parser.add_argument("slug", help="Project slug.")
+
+    draft_edit_parser = subparsers.add_parser(
+        "draft-edit",
+        help="Build edit_plan.json from local shot, video, voice, and sound files.",
+    )
+    draft_edit_parser.add_argument("slug", help="Project slug.")
+
+    export_parser = subparsers.add_parser("export-manifest", help="Export a text edit manifest.")
+    export_parser.add_argument("slug", help="Project slug.")
+    export_parser.add_argument("--out", help="Output path. Defaults to assets/exports/edit_manifest.txt.")
 
     asset_parser = subparsers.add_parser("asset-name", help="Print a conventional asset path.")
     asset_parser.add_argument("slug", help="Project slug.")
@@ -140,10 +170,16 @@ def main(argv: list[str] | None = None) -> int:
         return _status(root, args)
     if args.command == "collect":
         return _collect(root, args)
+    if args.command == "apply-output":
+        return _apply_output(root, args)
     if args.command == "validate":
         return _validate(root, args)
     if args.command == "review":
         return _review(root, args)
+    if args.command == "draft-edit":
+        return _draft_edit(root, args)
+    if args.command == "export-manifest":
+        return _export_manifest(root, args)
     if args.command == "asset-name":
         return _asset_name(root, args)
 
@@ -344,6 +380,25 @@ def _collect(root: Path, args: argparse.Namespace) -> int:
     return 0
 
 
+def _apply_output(root: Path, args: argparse.Namespace) -> int:
+    path = project_dir(root, args.slug)
+    output_file = Path(args.output_file) if args.output_file else None
+    if output_file is not None and not output_file.is_absolute():
+        output_file = root / output_file
+    result = apply_stage_output(
+        path,
+        args.stage,
+        output_path=output_file,
+        keep_invalid=args.keep_invalid,
+    )
+    print(f"Applied: {result.output_path}")
+    for written in result.written_files:
+        print(f"  {written}")
+    if result.backup_dir is not None:
+        print(f"Backup: {result.backup_dir}")
+    return 0
+
+
 def _validate(root: Path, args: argparse.Namespace) -> int:
     path = project_dir(root, args.slug)
     problems = validate_project(path)
@@ -379,6 +434,14 @@ def _review(root: Path, args: argparse.Namespace) -> int:
     else:
         print("  none")
 
+    outputs = latest_collected_outputs(path)
+    print("\nCollected Outputs:")
+    if outputs:
+        for stage, output in outputs.items():
+            print(f"  {stage:14} {output}")
+    else:
+        print("  none")
+
     next_status = next_stage(path)
     print("\nNext:")
     if next_status is None:
@@ -387,6 +450,29 @@ def _review(root: Path, args: argparse.Namespace) -> int:
         print(f"  Work on `{next_status.stage}`: {next_status.detail}")
         print(f"  mythoframe request-stage {args.slug} {next_status.stage}")
     return 1 if problems else 0
+
+
+def _draft_edit(root: Path, args: argparse.Namespace) -> int:
+    path = project_dir(root, args.slug)
+    output = write_draft_edit_plan(path)
+    problems = validate_project(path)
+    print(f"Wrote draft edit plan: {output}")
+    if problems:
+        print("Project validation failed:")
+        for problem in problems:
+            print(f"  - {problem}")
+        return 1
+    return 0
+
+
+def _export_manifest(root: Path, args: argparse.Namespace) -> int:
+    path = project_dir(root, args.slug)
+    output_path = Path(args.out) if args.out else None
+    if output_path is not None and not output_path.is_absolute():
+        output_path = root / output_path
+    output = export_edit_manifest(path, output_path=output_path)
+    print(f"Wrote edit manifest: {output}")
+    return 0
 
 
 def _asset_name(root: Path, args: argparse.Namespace) -> int:

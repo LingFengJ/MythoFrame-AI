@@ -228,6 +228,7 @@ then collect it:
 
 ```powershell
 mythoframe collect pilot-scene
+mythoframe apply-output pilot-scene script
 ```
 
 For Codex-assisted web generation, use:
@@ -246,6 +247,13 @@ Review current project status:
 
 ```powershell
 mythoframe review pilot-scene
+```
+
+Build a local edit decision list and export a text manifest:
+
+```powershell
+mythoframe draft-edit pilot-scene
+mythoframe export-manifest pilot-scene
 ```
 
 See:

@@ -61,6 +61,16 @@ def pending_request_summary(project_path: Path) -> list[str]:
     return summaries
 
 
+def latest_collected_outputs(project_path: Path) -> dict[str, Path]:
+    outputs: dict[str, Path] = {}
+    for stage in STAGE_NAMES:
+        stage_dir = project_path / "outputs" / stage
+        candidates = sorted(stage_dir.glob("*.md")) if stage_dir.exists() else []
+        if candidates:
+            outputs[stage] = candidates[-1]
+    return outputs
+
+
 def _artifact_status(path: Path) -> tuple[str, str]:
     if not path.exists():
         return "missing", "missing"

@@ -15,8 +15,10 @@ Codex should act as the model-web operator for pending requests:
 6. Use computer-use automation only when browser automation is not suitable.
 7. Paste the model result into the matching `.response.md` below the marker.
 8. Run `mythoframe collect <slug>` or tell the user the response is ready.
-9. Run `mythoframe validate <slug>` before treating collected output as project
-   truth when the output is JSON or CSV.
+9. Run `mythoframe apply-output <slug> <stage>` when the user wants to promote
+   the collected result into canonical project files.
+10. Run `mythoframe validate <slug>` before treating collected output as project
+    truth when the output is JSON or CSV.
 
 ## Safety Rules
 

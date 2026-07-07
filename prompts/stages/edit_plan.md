@@ -71,7 +71,11 @@ Return valid JSON only. Use this shape:
     "sound_effects": []
   },
   "subtitles": [],
-  "review_gates": ["pacing", "continuity", "audio balance", "caption timing"]
+  "review_gates": ["pacing", "continuity", "audio balance", "caption timing"],
+  "automation": {
+    "rough_cut": "planned",
+    "final_review_required": true
+  }
 }
 ```
 

@@ -42,3 +42,12 @@ The rendered prompt is built from project files such as `project_bible.json`,
 `source_brief.md`, `adaptation.md`, `script.md`, `characters.json`, and the CSV
 planning files.
 
+Each stage request includes metadata for the operator:
+
+- target model or site when supplied
+- expected output artifact
+- expected format
+- paste target
+- review requirement
+- no-API-by-default cost policy
+- acceptance checklist

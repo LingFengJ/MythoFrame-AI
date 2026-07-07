@@ -15,6 +15,7 @@ class StageSpec:
     title: str
     template_file: str
     output_artifacts: tuple[str, ...]
+    expected_format: str
     acceptance_checklist: tuple[str, ...]
 
 
@@ -24,6 +25,7 @@ STAGE_SPECS: dict[str, StageSpec] = {
         title="Story Adaptation",
         template_file="adaptation.md",
         output_artifacts=("adaptation.md",),
+        expected_format="markdown",
         acceptance_checklist=(
             "Keeps source rights and upload risks explicit.",
             "Compresses the source into one 60-90 second cinematic scene.",
@@ -35,6 +37,7 @@ STAGE_SPECS: dict[str, StageSpec] = {
         title="Short Script",
         template_file="script.md",
         output_artifacts=("script.md",),
+        expected_format="markdown",
         acceptance_checklist=(
             "Fits a 60-90 second horizontal short.",
             "Includes dialogue, narration, emotion, and visual intent.",
@@ -46,6 +49,7 @@ STAGE_SPECS: dict[str, StageSpec] = {
         title="Character Bible",
         template_file="characters.md",
         output_artifacts=("characters.json",),
+        expected_format="json",
         acceptance_checklist=(
             "Outputs valid JSON only.",
             "Defines reusable visual identity for each recurring character.",
@@ -57,6 +61,7 @@ STAGE_SPECS: dict[str, StageSpec] = {
         title="Shot Table",
         template_file="shot_table.md",
         output_artifacts=("shot_table.csv",),
+        expected_format="csv",
         acceptance_checklist=(
             "Outputs CSV with the exact requested header.",
             "Keeps each shot around three seconds or less.",
@@ -68,6 +73,7 @@ STAGE_SPECS: dict[str, StageSpec] = {
         title="Image Prompts",
         template_file="image_prompts.md",
         output_artifacts=("image_prompts.csv",),
+        expected_format="csv",
         acceptance_checklist=(
             "Outputs CSV with the exact requested header.",
             "Prompts include subject, action, environment, composition, light, style, and quality.",
@@ -79,6 +85,7 @@ STAGE_SPECS: dict[str, StageSpec] = {
         title="Video Prompts",
         template_file="video_prompts.md",
         output_artifacts=("video_prompts.csv",),
+        expected_format="csv",
         acceptance_checklist=(
             "Outputs CSV with the exact requested header.",
             "Each prompt describes motion, camera movement, emotion change, and environment dynamics.",
@@ -90,6 +97,7 @@ STAGE_SPECS: dict[str, StageSpec] = {
         title="Sound Plan",
         template_file="sound_plan.md",
         output_artifacts=("voice_lines.csv", "sound_plan.csv"),
+        expected_format="two csv blocks",
         acceptance_checklist=(
             "Separates dialogue/narration from music, ambience, and SFX.",
             "Gives timing notes that match the shot table.",
@@ -101,6 +109,7 @@ STAGE_SPECS: dict[str, StageSpec] = {
         title="Edit Plan",
         template_file="edit_plan.md",
         output_artifacts=("edit_plan.json",),
+        expected_format="json",
         acceptance_checklist=(
             "Outputs valid JSON only.",
             "Represents an edit decision list, not a rendered video.",
@@ -177,4 +186,3 @@ def _render(template: str, context: dict[str, str]) -> str:
         return context.get(key, f"[unknown template variable: {key}]")
 
     return re.sub(r"\{\{\s*([a-zA-Z0-9_]+)\s*\}\}", replace, template)
-

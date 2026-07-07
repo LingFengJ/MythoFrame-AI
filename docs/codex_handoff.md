@@ -15,6 +15,8 @@ Codex should act as the model-web operator for pending requests:
 6. Use computer-use automation only when browser automation is not suitable.
 7. Paste the model result into the matching `.response.md` below the marker.
 8. Run `mythoframe collect <slug>` or tell the user the response is ready.
+9. Run `mythoframe validate <slug>` before treating collected output as project
+   truth when the output is JSON or CSV.
 
 ## Safety Rules
 
@@ -24,6 +26,8 @@ Codex should act as the model-web operator for pending requests:
 - Do not submit purchases, subscriptions, account creation, or paid generation
   without explicit approval.
 - Keep model outputs separated from verified project truth until reviewed.
+- Treat `api_command` as opt-in only. Do not convert a web/manual request into a
+  paid API call without explicit user approval.
 
 ## Fallback
 

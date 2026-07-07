@@ -15,8 +15,10 @@ from mythoframe.manual_queue import (
 )
 from mythoframe.prompts import get_stage_spec, list_stage_specs, render_stage_prompt
 from mythoframe.project import ProjectSpec, init_project, project_dir, validate_project
+from mythoframe.pilot import init_pilot_project
 from mythoframe.providers import ApiCommandProvider
 from mythoframe.schemas import GENERATION_MODES, STAGE_NAMES
+from mythoframe.workflow import next_stage, pending_request_summary, stage_statuses
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -39,6 +41,10 @@ def main(argv: list[str] | None = None) -> int:
     init_parser.add_argument("--runtime", default="60-90 seconds")
     init_parser.add_argument("--source-type", default="to_be_determined")
     init_parser.add_argument("--force", action="store_true", help="Overwrite template files.")
+
+    pilot_parser = subparsers.add_parser("pilot", help="Create an offline original pilot project.")
+    pilot_parser.add_argument("slug", nargs="?", default="pilot-scene")
+    pilot_parser.add_argument("--force", action="store_true", help="Overwrite seeded pilot files.")
 
     request_parser = subparsers.add_parser(
         "request",
@@ -101,6 +107,9 @@ def main(argv: list[str] | None = None) -> int:
     validate_parser = subparsers.add_parser("validate", help="Validate project structure.")
     validate_parser.add_argument("slug", help="Project slug.")
 
+    review_parser = subparsers.add_parser("review", help="Summarize project workflow status.")
+    review_parser.add_argument("slug", help="Project slug.")
+
     asset_parser = subparsers.add_parser("asset-name", help="Print a conventional asset path.")
     asset_parser.add_argument("slug", help="Project slug.")
     asset_parser.add_argument("asset_type", choices=ASSET_TYPES)
@@ -117,6 +126,8 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.command == "init":
         return _init(root, args)
+    if args.command == "pilot":
+        return _pilot(root, args)
     if args.command == "request":
         return _request(root, args)
     if args.command == "stages":
@@ -131,6 +142,8 @@ def main(argv: list[str] | None = None) -> int:
         return _collect(root, args)
     if args.command == "validate":
         return _validate(root, args)
+    if args.command == "review":
+        return _review(root, args)
     if args.command == "asset-name":
         return _asset_name(root, args)
 
@@ -155,6 +168,14 @@ def _init(root: Path, args: argparse.Namespace) -> int:
             print(f"  {target}")
     else:
         print("No template files were overwritten.")
+    return 0
+
+
+def _pilot(root: Path, args: argparse.Namespace) -> int:
+    path = init_pilot_project(root, slug=args.slug, force=args.force)
+    print(f"Pilot project ready: {path}")
+    print("Next command:")
+    print(f"  mythoframe request-stage {args.slug} adaptation")
     return 0
 
 
@@ -274,7 +295,11 @@ def _request_stage(root: Path, args: argparse.Namespace) -> int:
     )
     metadata = _request_metadata(args)
     metadata["expected_artifacts"] = ", ".join(spec.output_artifacts)
+    metadata["expected_format"] = spec.expected_format
     metadata["stage_title"] = spec.title
+    metadata["paste_target"] = "matching .response.md below <!-- MODEL_OUTPUT_BELOW -->"
+    metadata["review_required"] = "true"
+    metadata["cost_policy"] = "manual_file/codex_web by default; api_command only when explicitly configured"
     return _submit_request(
         path=path,
         stage=args.stage,
@@ -329,6 +354,39 @@ def _validate(root: Path, args: argparse.Namespace) -> int:
         return 1
     print(f"Project validation passed: {path}")
     return 0
+
+
+def _review(root: Path, args: argparse.Namespace) -> int:
+    path = project_dir(root, args.slug)
+    problems = validate_project(path)
+    print(f"Project: {path}")
+    if problems:
+        print("Validation: failed")
+        for problem in problems:
+            print(f"  - {problem}")
+    else:
+        print("Validation: passed")
+
+    print("\nStages:")
+    for status in stage_statuses(path):
+        print(f"  {status.stage:14} {status.status:7} {status.detail}")
+
+    pending = pending_request_summary(path)
+    print("\nRequests:")
+    if pending:
+        for summary in pending:
+            print(f"  {summary}")
+    else:
+        print("  none")
+
+    next_status = next_stage(path)
+    print("\nNext:")
+    if next_status is None:
+        print("  All current stages look ready for review.")
+    else:
+        print(f"  Work on `{next_status.stage}`: {next_status.detail}")
+        print(f"  mythoframe request-stage {args.slug} {next_status.stage}")
+    return 1 if problems else 0
 
 
 def _asset_name(root: Path, args: argparse.Namespace) -> int:

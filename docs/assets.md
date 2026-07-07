@@ -24,3 +24,6 @@ Conventions:
 
 These are conventions, not generated media. The project should not commit large
 generated assets by default.
+
+Generated project assets live under `projects/*/assets/`, which is ignored by
+Git. Track only small metadata, examples, or explicitly curated assets.

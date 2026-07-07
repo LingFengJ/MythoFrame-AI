@@ -205,6 +205,12 @@ Create a first project:
 mythoframe init pilot-scene --title "Pilot Scene"
 ```
 
+Or create an offline original pilot project:
+
+```powershell
+mythoframe pilot pilot-scene
+```
+
 Create a default manual generation request:
 
 ```powershell
@@ -236,10 +242,17 @@ computer-use automation, or fall back to a manual paste workflow.
 For opt-in API automation, set `MYTHOFRAME_API_COMMAND` to a local wrapper
 command and use `--mode api_command`. This is intentionally not the default.
 
+Review current project status:
+
+```powershell
+mythoframe review pilot-scene
+```
+
 See:
 
 - `HANDOFF.md`
 - `docs/architecture.md`
+- `docs/workflow.md`
 - `docs/stage_prompts.md`
 - `docs/generation_modes.md`
 - `docs/codex_handoff.md`

@@ -62,6 +62,10 @@ an automated assembly with `ffmpeg` or an editing application's timeline format.
 The final edit should still have a review gate because shot rhythm, continuity,
 and emotional pacing are not reliably solved by automation alone.
 
+The edit plan schema is intentionally an edit decision list: timeline metadata,
+clip placements, audio placements, subtitles, review gates, and automation notes.
+Rendering is a later layer.
+
 ## Prompt Layer
 
 Stage prompts live in `prompts/stages/`. They can be rendered without calling a

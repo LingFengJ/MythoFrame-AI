@@ -4,6 +4,18 @@ from __future__ import annotations
 
 OUTPUT_MARKER = "<!-- MODEL_OUTPUT_BELOW -->"
 
+ARTIFACT_STATUSES = (
+    "draft",
+    "pending",
+    "generated",
+    "selected",
+    "needs_review",
+    "approved",
+    "rejected",
+)
+
+SOUND_CUE_TYPES = ("music", "ambience", "sfx", "mix_note")
+
 STAGE_NAMES = (
     "adaptation",
     "script",
@@ -103,4 +115,28 @@ CSV_REQUIRED_HEADERS = {
         "status",
         "audio_asset",
     ),
+}
+
+CSV_REQUIRED_ROW_FIELDS = {
+    "shot_table.csv": ("shot_number", "duration", "visual_description", "review_status"),
+    "image_prompts.csv": ("shot_number", "candidate_id", "prompt", "status"),
+    "video_prompts.csv": ("shot_number", "source_image", "prompt", "duration", "status"),
+    "voice_lines.csv": ("line_id", "shot_number", "speaker", "text", "status"),
+    "sound_plan.csv": ("cue_id", "shot_number", "cue_type", "description", "status"),
+}
+
+CSV_INTEGER_FIELDS = {
+    "shot_table.csv": ("shot_number",),
+    "image_prompts.csv": ("shot_number",),
+    "video_prompts.csv": ("shot_number",),
+    "voice_lines.csv": ("line_id", "shot_number"),
+    "sound_plan.csv": ("shot_number",),
+}
+
+CSV_STATUS_FIELDS = {
+    "shot_table.csv": ("review_status",),
+    "image_prompts.csv": ("status",),
+    "video_prompts.csv": ("status",),
+    "voice_lines.csv": ("status",),
+    "sound_plan.csv": ("status",),
 }

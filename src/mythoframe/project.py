@@ -8,7 +8,16 @@ import re
 from dataclasses import dataclass
 from pathlib import Path
 
-from mythoframe.schemas import CSV_REQUIRED_HEADERS, PROJECT_DIRS, PROJECT_FILES
+from mythoframe.schemas import (
+    ARTIFACT_STATUSES,
+    CSV_INTEGER_FIELDS,
+    CSV_REQUIRED_HEADERS,
+    CSV_REQUIRED_ROW_FIELDS,
+    CSV_STATUS_FIELDS,
+    PROJECT_DIRS,
+    PROJECT_FILES,
+    SOUND_CUE_TYPES,
+)
 
 
 @dataclass(frozen=True)
@@ -75,10 +84,15 @@ def validate_project(path: Path) -> list[str]:
                 continue
             problems.extend(_validate_json_shape(target, value))
 
+    csv_rows_by_file: dict[str, list[dict[str, str]]] = {}
     for filename, expected_headers in CSV_REQUIRED_HEADERS.items():
         target = path / filename
         if target.exists():
-            problems.extend(_validate_csv_headers(target, expected_headers))
+            csv_problems, rows = _validate_csv(target, expected_headers)
+            problems.extend(csv_problems)
+            csv_rows_by_file[filename] = rows
+
+    problems.extend(_validate_cross_artifact_rows(path, csv_rows_by_file))
 
     return problems
 
@@ -124,14 +138,15 @@ def _project_templates(spec: ProjectSpec) -> dict[str, str]:
             "runtime": spec.runtime,
             "frame_rate": "to_be_determined",
         },
-        "tracks": {
-            "video": [],
+        "clips": [],
+        "audio": {
             "dialogue": [],
             "narration": [],
             "music": [],
             "sound_effects": [],
-            "subtitles": [],
         },
+        "subtitles": [],
+        "review_gates": ["pacing", "continuity", "audio balance", "caption timing"],
         "automation": {
             "rough_cut": "planned",
             "final_review_required": True,
@@ -277,24 +292,120 @@ def _validate_json_shape(path: Path, value: object) -> list[str]:
         characters = value.get("characters")
         if not isinstance(characters, list):
             problems.append(f"Expected `characters` list in {path}")
+        else:
+            for index, character in enumerate(characters, start=1):
+                if not isinstance(character, dict):
+                    problems.append(f"Expected character {index} to be an object in {path}")
+                    continue
+                for key in ("id", "name", "reference_prompt", "consistency_prompt"):
+                    if not character.get(key):
+                        problems.append(f"Missing `{key}` for character {index} in {path}")
     elif name == "edit_plan.json":
         if not isinstance(value.get("timeline"), dict):
             problems.append(f"Expected `timeline` object in {path}")
-        if not isinstance(value.get("tracks"), dict):
-            problems.append(f"Expected `tracks` object in {path}")
+        if not isinstance(value.get("clips"), list):
+            problems.append(f"Expected `clips` list in {path}")
+        audio = value.get("audio")
+        if not isinstance(audio, dict):
+            problems.append(f"Expected `audio` object in {path}")
+        else:
+            for key in ("dialogue", "narration", "music", "sound_effects"):
+                if not isinstance(audio.get(key), list):
+                    problems.append(f"Expected `audio.{key}` list in {path}")
+        if not isinstance(value.get("subtitles"), list):
+            problems.append(f"Expected `subtitles` list in {path}")
+        if not isinstance(value.get("review_gates"), list):
+            problems.append(f"Expected `review_gates` list in {path}")
     return problems
 
 
-def _validate_csv_headers(path: Path, expected_headers: tuple[str, ...]) -> list[str]:
+def _validate_csv(
+    path: Path,
+    expected_headers: tuple[str, ...],
+) -> tuple[list[str], list[dict[str, str]]]:
+    problems: list[str] = []
+    rows: list[dict[str, str]] = []
     with path.open("r", encoding="utf-8", newline="") as file:
-        reader = csv.reader(file)
+        reader = csv.DictReader(file)
         try:
-            headers = next(reader)
-        except StopIteration:
-            return [f"Missing CSV header row in {path}"]
+            headers = reader.fieldnames
+        except csv.Error as exc:
+            return [f"Unable to parse CSV in {path}: {exc}"], []
 
-    if tuple(headers) != expected_headers:
-        return [
+        if headers is None:
+            return [f"Missing CSV header row in {path}"], []
+
+        if tuple(headers) != expected_headers:
+            problems.append(
             f"Unexpected CSV headers in {path}: expected {list(expected_headers)}, got {headers}"
-        ]
-    return []
+            )
+            return problems, []
+
+        for row_number, row in enumerate(reader, start=2):
+            normalized = {key: (value or "").strip() for key, value in row.items()}
+            if not any(normalized.values()):
+                continue
+            rows.append(normalized)
+            problems.extend(_validate_csv_row(path, row_number, normalized))
+
+    return problems, rows
+
+
+def _validate_csv_row(path: Path, row_number: int, row: dict[str, str]) -> list[str]:
+    problems: list[str] = []
+    filename = path.name
+
+    for field in CSV_REQUIRED_ROW_FIELDS.get(filename, ()):
+        if not row.get(field):
+            problems.append(f"Missing `{field}` in {path} row {row_number}")
+
+    for field in CSV_INTEGER_FIELDS.get(filename, ()):
+        value = row.get(field)
+        if value and not value.isdigit():
+            problems.append(f"Expected integer `{field}` in {path} row {row_number}, got {value!r}")
+
+    for field in CSV_STATUS_FIELDS.get(filename, ()):
+        value = row.get(field)
+        if value and value not in ARTIFACT_STATUSES:
+            allowed = ", ".join(ARTIFACT_STATUSES)
+            problems.append(
+                f"Invalid `{field}` in {path} row {row_number}: {value!r}; expected one of {allowed}"
+            )
+
+    if filename in ("shot_table.csv", "video_prompts.csv"):
+        duration = row.get("duration")
+        if duration and not re.fullmatch(r"\d+(?:\.\d+)?s", duration):
+            problems.append(
+                f"Expected duration like `3s` or `2.5s` in {path} row {row_number}, got {duration!r}"
+            )
+
+    if filename == "sound_plan.csv":
+        cue_type = row.get("cue_type")
+        if cue_type and cue_type not in SOUND_CUE_TYPES:
+            allowed = ", ".join(SOUND_CUE_TYPES)
+            problems.append(
+                f"Invalid `cue_type` in {path} row {row_number}: {cue_type!r}; expected one of {allowed}"
+            )
+
+    return problems
+
+
+def _validate_cross_artifact_rows(
+    path: Path,
+    csv_rows_by_file: dict[str, list[dict[str, str]]],
+) -> list[str]:
+    problems: list[str] = []
+    shot_rows = csv_rows_by_file.get("shot_table.csv", [])
+    shot_numbers = {row["shot_number"] for row in shot_rows if row.get("shot_number", "").isdigit()}
+    if not shot_numbers:
+        return problems
+
+    for filename in ("image_prompts.csv", "video_prompts.csv", "voice_lines.csv", "sound_plan.csv"):
+        for index, row in enumerate(csv_rows_by_file.get(filename, []), start=2):
+            shot_number = row.get("shot_number")
+            if shot_number and shot_number.isdigit() and shot_number not in shot_numbers:
+                problems.append(
+                    f"Unknown shot_number {shot_number!r} in {path / filename} row {index}"
+                )
+
+    return problems

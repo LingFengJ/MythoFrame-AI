@@ -50,8 +50,11 @@ Tracked project backbone:
 - `src/mythoframe/providers.py`: opt-in command-based API provider hook.
 - `src/mythoframe/prompts.py`: stage template rendering.
 - `src/mythoframe/assets.py`: asset naming conventions.
+- `src/mythoframe/pilot.py`: offline original pilot scaffolding.
+- `src/mythoframe/workflow.py`: stage status and review helpers.
 - `src/mythoframe/schemas.py`: shared constants.
 - `docs/architecture.md`: file-first architecture.
+- `docs/workflow.md`: pilot/review/validation workflow.
 - `docs/stage_prompts.md`: stage prompt commands and template behavior.
 - `docs/assets.md`: asset naming conventions.
 - `docs/generation_modes.md`: manual, Codex web, and API command modes.
@@ -92,6 +95,12 @@ Create a pilot project:
 mythoframe init pilot-scene --title "Pilot Scene"
 ```
 
+Or create the offline original pilot:
+
+```powershell
+mythoframe pilot pilot-scene
+```
+
 Create a manual request:
 
 ```powershell
@@ -108,6 +117,12 @@ Render a prompt without creating a request:
 
 ```powershell
 mythoframe prompt pilot-scene script
+```
+
+Review status:
+
+```powershell
+mythoframe review pilot-scene
 ```
 
 After a model response is pasted below the marker in the generated response
@@ -178,7 +193,7 @@ Good next steps, in order:
 2. Add a command to generate those prompts from a project bible and source
    brief. Done.
 3. Add schema validation for CSV/JSON artifacts beyond file existence. Initial
-   validation exists; deepen it as schemas become stricter.
+   row-level validation exists; deepen it as schemas become stricter.
 4. Add a rough-cut edit plan schema before implementing any renderer. Initial
    schema and prompt exist; deepen before rendering.
 5. Add an `ffmpeg` rough-cut renderer only after asset path conventions are
@@ -188,12 +203,13 @@ Good next steps, in order:
 
 ## Current Risks
 
-- No real pilot project has been created yet.
-- No book, manga, or original story source has been selected.
+- Offline original pilot scaffolding exists, but no user-selected source project
+  has been created yet.
+- No book, manga, or user-owned story source has been selected.
 - No provider web workflows have been tested against live model sites.
 - No renderer exists yet.
-- No asset naming convention exists yet for selected images, generated video
-  clips, voice lines, music, or SFX.
+- Asset naming conventions exist, but no real generated assets have been linked
+  through a production project yet.
 - `projects/*/requests`, `projects/*/outputs`, and `projects/*/assets` are
   ignored, so generated work products are local unless separately exported or
   explicitly tracked.

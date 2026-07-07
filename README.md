@@ -189,6 +189,49 @@ never be committed to GitHub.
 
 ## Current Status
 
-This repository is at the planning and workflow-design stage. The next practical
-step is to select one pilot story or scene and use it to test the full pipeline
-from script to edit plan.
+This repository now has a manual-first engineering backbone.
+
+## Quickstart
+
+Install locally in editable mode:
+
+```powershell
+python -m pip install -e .
+```
+
+Create a first project:
+
+```powershell
+mythoframe init pilot-scene --title "Pilot Scene"
+```
+
+Create a default manual generation request:
+
+```powershell
+mythoframe request pilot-scene script --prompt-file examples/pilot_brief.md
+```
+
+Paste the model output into the generated `.response.md` file below the marker,
+then collect it:
+
+```powershell
+mythoframe collect pilot-scene
+```
+
+For Codex-assisted web generation, use:
+
+```powershell
+mythoframe request pilot-scene script --mode codex_web --prompt-file examples/pilot_brief.md
+```
+
+Then ask Codex to process the pending request. Codex can use browser automation,
+computer-use automation, or fall back to a manual paste workflow.
+
+For opt-in API automation, set `MYTHOFRAME_API_COMMAND` to a local wrapper
+command and use `--mode api_command`. This is intentionally not the default.
+
+See:
+
+- `docs/architecture.md`
+- `docs/generation_modes.md`
+- `docs/codex_handoff.md`

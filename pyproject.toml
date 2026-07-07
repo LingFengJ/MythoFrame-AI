@@ -1,0 +1,21 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "mythoframe-ai"
+version = "0.1.0"
+description = "Manual-first AI workflow backbone for cinematic animated shorts."
+readme = "README.md"
+requires-python = ">=3.10"
+authors = [
+  { name = "LingFengJ", email = "jinlingfeng2579@gmail.com" }
+]
+dependencies = []
+
+[project.scripts]
+mythoframe = "mythoframe.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+

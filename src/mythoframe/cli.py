@@ -9,6 +9,7 @@ from mythoframe.artifacts import apply_stage_output
 from mythoframe.assets import ASSET_TYPES, asset_path
 from mythoframe.bundle import pack_project, unpack_project
 from mythoframe.diagnostics import has_failures, run_doctor
+from mythoframe.guide import command_guide, provider_guide
 from mythoframe.manual_queue import (
     collect_response,
     create_request,
@@ -52,6 +53,11 @@ def main(argv: list[str] | None = None) -> int:
     )
 
     subparsers = parser.add_subparsers(dest="command", required=True)
+
+    guide_parser = subparsers.add_parser("guide", help="Print the normal command guide.")
+    guide_parser.add_argument("slug", nargs="?", default="pilot-scene")
+
+    subparsers.add_parser("providers", help="Print the Seedance-first provider/account guide.")
 
     init_parser = subparsers.add_parser("init", help="Create a project skeleton.")
     init_parser.add_argument("slug", help="Project slug, for example pilot-scene.")
@@ -248,6 +254,12 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
     root = Path(args.root).resolve()
 
+    if args.command == "guide":
+        print(command_guide(args.slug))
+        return 0
+    if args.command == "providers":
+        print(provider_guide())
+        return 0
     if args.command == "init":
         return _init(root, args)
     if args.command == "pilot":

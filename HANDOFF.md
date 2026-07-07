@@ -35,11 +35,19 @@ without forcing expensive API calls. The preferred generation order is:
 Never wire a paid API provider as the default path. Never make background API
 calls without explicit user approval.
 
+Default provider assumption: `seedance-first`.
+
+- Use Seedance 2.0 for video generation and native clip audio wherever possible.
+- Use one image provider: ChatGPT Images, Gemini/Nano Banana, or Seedream.
+- Treat ElevenLabs, Suno, Udio, Fish Audio, and similar tools as optional
+  specialist fallbacks, not baseline requirements.
+
 ## What Exists Now
 
 Tracked project backbone:
 
 - `README.md`: overview and quickstart.
+- `COMMANDS.md`: compact command cheat sheet for routine use.
 - `pyproject.toml`: no-dependency Python package config.
 - `.env.example`: optional API command wrapper setting.
 - `.gitignore`: ignores local envs, caches, generated project assets, request
@@ -56,6 +64,7 @@ Tracked project backbone:
   media.
 - `src/mythoframe/diagnostics.py`: operational readiness checks, including
   optional tiny OpenAI API smoke testing.
+- `src/mythoframe/guide.py`: command guide and Seedance-first provider guide.
 - `src/mythoframe/providers.py`: opt-in command-based API provider hook.
 - `src/mythoframe/prompts.py`: stage template rendering.
 - `src/mythoframe/assets.py`: asset naming conventions.
@@ -71,6 +80,7 @@ Tracked project backbone:
 - `docs/workflow.md`: pilot/review/validation/export workflow.
 - `docs/stage_prompts.md`: stage prompt commands and template behavior.
 - `docs/assets.md`: asset naming conventions.
+- `docs/providers.md`: Seedance-first provider/account plan.
 - `docs/generation_modes.md`: manual, Codex web, and API command modes.
 - `docs/codex_handoff.md`: how Codex should operate pending web/manual
   generation requests.
@@ -141,6 +151,8 @@ Review status:
 mythoframe review pilot-scene
 mythoframe requests pilot-scene --completed
 mythoframe doctor pilot-scene
+mythoframe guide pilot-scene
+mythoframe providers
 ```
 
 Create the next request automatically:
@@ -305,6 +317,8 @@ Current completed backbone:
   machines.
 - Request dashboard exists with pending/completed stage, mode, target site, and
   target model metadata.
+- Command and provider guides exist in `COMMANDS.md`, `docs/providers.md`,
+  `mythoframe guide`, and `mythoframe providers`.
 - `doctor` exists for local readiness checks, with optional tiny OpenAI smoke
   testing when explicitly requested.
 - Generated media can be imported into conventional asset folders and tracked
@@ -445,13 +459,12 @@ playbooks around those choices.
 Required or likely required:
 
 - GitHub access for source control.
-- Logged-in text model website for adaptation, script, planning, and prompt
-  refinement.
-- Logged-in image generation website for character references and storyboard
-  frames.
-- Logged-in image-to-video generation website for shot clips.
-- Logged-in voice or dubbing website for dialogue and narration.
-- Music and SFX source, either generated, licensed, or user-provided.
+- Logged-in text/planning model website for adaptation, script, planning, and
+  prompt refinement: ChatGPT web or OpenAI is enough to start.
+- One logged-in image generation website for character references and storyboard
+  frames: choose ChatGPT Images, Gemini/Nano Banana, or Seedream.
+- Logged-in Seedance 2.0 access for video and native audio-video clip
+  generation wherever possible.
 - Local `ffmpeg` for automated rough cuts, unless editing is done manually in an
   external editor.
 - Enough local disk space for generated media and project bundles.
@@ -459,6 +472,9 @@ Required or likely required:
 Optional later:
 
 - API keys and wrappers for any provider the user explicitly wants to automate.
+- ElevenLabs, Fish Audio, or CapCut voice tools if Seedance cannot provide clean
+  enough dialogue, narration, or dubbing control.
+- Suno or Udio if Seedance cannot provide controllable music for the pilot.
 - Cloud storage for moving large generated assets.
 - Social media accounts for publishing.
 - Editing app integration for CapCut, Premiere Pro, DaVinci Resolve, or another

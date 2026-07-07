@@ -588,6 +588,10 @@ class BackboneTests(TestCase):
 
             self.assertFalse(has_failures(checks))
 
+    def test_cli_guides_are_available(self) -> None:
+        self.assertEqual(main(["guide", "pilot-scene"]), 0)
+        self.assertEqual(main(["providers"]), 0)
+
     def test_cli_next_creates_request_for_next_stage(self) -> None:
         with TemporaryDirectory() as tmp:
             repo_root = Path(__file__).resolve().parents[1]

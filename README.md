@@ -264,6 +264,8 @@ Review current project status:
 mythoframe review pilot-scene
 mythoframe requests pilot-scene --completed
 mythoframe doctor pilot-scene
+mythoframe guide pilot-scene
+mythoframe providers
 ```
 
 Import generated assets downloaded from model websites:
@@ -306,6 +308,7 @@ mythoframe unpack bundles/pilot-scene_YYYYMMDDTHHMMSSZ.mythoframe.zip
 
 See:
 
+- `COMMANDS.md`
 - `HANDOFF.md`
 - `docs/architecture.md`
 - `docs/workflow.md`
@@ -313,3 +316,4 @@ See:
 - `docs/generation_modes.md`
 - `docs/codex_handoff.md`
 - `docs/assets.md`
+- `docs/providers.md`
